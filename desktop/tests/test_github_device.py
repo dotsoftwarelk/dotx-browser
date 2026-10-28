@@ -22,6 +22,7 @@ class DeviceFlowTests(unittest.TestCase):
         self.assertEqual(parse_poll({'access_token':'sample-token','token_type':'bearer'},5),('authorized',5,'sample-token'))
         self.assertEqual(parse_poll({'error':'unknown'},5),('error',5,None))
         self.assertEqual(parse_poll({'access_token':'sample-token', 'token_type':None},5),('error',5,None))
+        self.assertEqual(parse_poll({'access_token':'bad\ntoken', 'token_type':'bearer'},5),('error',5,None))
     def test_identity_validation(self):
         self.assertEqual(valid_login({'login':'dotsoftwarelk'}),'dotsoftwarelk')
         self.assertIsNone(valid_login({'login':'evil<script>'}))
