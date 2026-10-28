@@ -409,7 +409,7 @@ class Browser(QMainWindow):
         form = QHBoxLayout(); query = QLineEdit(); query.setPlaceholderText('Search public GitHub')
         kind = QComboBox(); kind.addItems(['Repositories', 'Issues'])
         search = QPushButton('Search'); form.addWidget(kind); form.addWidget(query); form.addWidget(search); layout.addLayout(form)
-        status = QLabel('Enter a search term. No account is connected.'); status.setWordWrap(True); layout.addWidget(status)
+        status = QLabel('Enter a search term. Public search does not use account authentication.'); status.setWordWrap(True); layout.addWidget(status)
         results = QListWidget(); layout.addWidget(results)
         manager = QNetworkAccessManager(dialog)
         active = {'reply': None}

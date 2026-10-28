@@ -51,10 +51,12 @@ def parse_results(raw: bytes) -> list[Repository]:
         try:
             parsed = urlsplit(url)
             if parsed.scheme != 'https' or parsed.hostname != 'github.com' or parsed.username is not None or parsed.password is not None or parsed.port not in (None, 443): continue
+            match = re.fullmatch(r'/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)', parsed.path)
+            if not match or any(part in ('.', '..') for part in match.groups()) or name != '/'.join(match.groups()) or parsed.query or parsed.fragment: continue
         except ValueError: continue
         desc = item.get('description')
         stars = item.get('stargazers_count')
-        result.append(Repository(name[:300], desc[:500] if isinstance(desc, str) else '', url, stars if isinstance(stars, int) and stars >= 0 else 0))
+        result.append(Repository(name[:300], desc[:500] if isinstance(desc, str) else '', url, stars if type(stars) is int and stars >= 0 else 0))
     return result
 
 def parse_issues(raw: bytes) -> list[Issue]:
@@ -67,7 +69,7 @@ def parse_issues(raw: bytes) -> list[Issue]:
             parsed = urlsplit(url)
             if parsed.scheme != 'https' or parsed.hostname != 'github.com' or parsed.username is not None or parsed.password is not None or parsed.port not in (None, 443): continue
             match = re.fullmatch(r'/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/issues/([1-9][0-9]*)', parsed.path)
-            if not match or int(match.group(3)) != number or parsed.query or parsed.fragment: continue
+            if not match or any(part in ('.', '..') for part in match.groups()[:2]) or int(match.group(3)) != number or parsed.query or parsed.fragment: continue
         except ValueError: continue
         result.append(Issue(title[:300].replace('\n', ' '), match.group(1) + '/' + match.group(2), number, state, url))
     return result
