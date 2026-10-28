@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QFileDialog, QInputDialo
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineDownloadRequest, QWebEngineNewWindowRequest
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
-from .services.github import search_url, parse_results, error_message
+from .services.github import search_url, search_issues_url, parse_results, parse_issues, error_message
 from .integrations.github_account import GitHubAccountDialog, GitHubSession
 from .theme import stylesheet
 from .core import normalize_input, load_data, save_data, validated_state, clean_session_urls, valid_web_url, SEARCH
@@ -389,7 +389,7 @@ class Browser(QMainWindow):
             button = QPushButton(name + '  ↗')
             button.clicked.connect(lambda checked=False, u=url: (self.new_tab(u), dialog.accept()))
             layout.addWidget(button)
-        github = QPushButton('Search public GitHub repositories…')
+        github = QPushButton('Search public GitHub repositories and issues…')
         github.clicked.connect(lambda: (dialog.accept(), self.github_search()))
         layout.addWidget(github)
         account = QPushButton('GitHub account — experimental…')
@@ -404,19 +404,21 @@ class Browser(QMainWindow):
     def github_search(self):
         dialog = QDialog(self); dialog.setWindowTitle('GitHub public search'); dialog.resize(680, 500)
         layout = QVBoxLayout(dialog)
-        note = QLabel('Search public GitHub repositories without signing in. Your query and IP address are sent to GitHub; results are subject to GitHub rate limits.')
+        note = QLabel('Search public GitHub repositories or issues without signing in. Your query and IP address are sent to GitHub; results are subject to GitHub rate limits.')
         note.setWordWrap(True); layout.addWidget(note)
-        form = QHBoxLayout(); query = QLineEdit(); query.setPlaceholderText('Search public repositories')
-        search = QPushButton('Search'); form.addWidget(query); form.addWidget(search); layout.addLayout(form)
+        form = QHBoxLayout(); query = QLineEdit(); query.setPlaceholderText('Search public GitHub')
+        kind = QComboBox(); kind.addItems(['Repositories', 'Issues'])
+        search = QPushButton('Search'); form.addWidget(kind); form.addWidget(query); form.addWidget(search); layout.addLayout(form)
         status = QLabel('Enter a search term. No account is connected.'); status.setWordWrap(True); layout.addWidget(status)
         results = QListWidget(); layout.addWidget(results)
         manager = QNetworkAccessManager(dialog)
         active = {'reply': None}
         def start():
-            try: url = search_url(query.text())
+            mode = kind.currentText()
+            try: url = search_issues_url(query.text()) if mode == 'Issues' else search_url(query.text())
             except ValueError as e: status.setText(str(e)); return
             if active['reply'] is not None: return
-            results.clear(); status.setText('Searching GitHub…'); search.setEnabled(False)
+            results.clear(); status.setText('Searching GitHub…'); search.setEnabled(False); kind.setEnabled(False)
             req = QNetworkRequest(QUrl(url))
             req.setRawHeader(b'Accept', b'application/vnd.github+json')
             req.setRawHeader(b'X-GitHub-Api-Version', b'2022-11-28')
@@ -424,19 +426,21 @@ class Browser(QMainWindow):
             req.setTransferTimeout(15000)
             reply = manager.get(req); active['reply'] = reply
             def done():
-                active['reply'] = None; search.setEnabled(True)
+                active['reply'] = None; search.setEnabled(True); kind.setEnabled(True)
                 code = reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute) or 0
                 if reply.error() != QNetworkReply.NetworkError.NoError or code != 200:
                     remaining = bytes(reply.rawHeader(b'X-RateLimit-Remaining'))
                     status.setText(error_message(int(code), remaining == b'0' or reply.hasRawHeader(b'Retry-After')))
                 else:
                     try:
-                        data = parse_results(bytes(reply.readAll()))
+                        data = parse_issues(bytes(reply.readAll())) if mode == 'Issues' else parse_results(bytes(reply.readAll()))
                         from PySide6.QtWidgets import QListWidgetItem
-                        for repo in data:
-                            item = QListWidgetItem(f'{repo.full_name}  ·  {repo.stars:,} stars\n{repo.description}')
-                            item.setData(Qt.ItemDataRole.UserRole, repo.html_url); results.addItem(item)
-                        status.setText(f'{len(data)} public repositories found. Double-click a result to open it.' if data else 'No public repositories found.')
+                        for entry in data:
+                            text = f'{entry.repository} #{entry.number}  ·  {entry.state}\n{entry.title}' if mode == 'Issues' else f'{entry.full_name}  ·  {entry.stars:,} stars\n{entry.description}'
+                            item = QListWidgetItem(text)
+                            item.setData(Qt.ItemDataRole.UserRole, entry.html_url); results.addItem(item)
+                        noun = 'issues' if mode == 'Issues' else 'repositories'
+                        status.setText(f'{len(data)} public {noun} found. Double-click a result to open it.' if data else f'No public {noun} found.')
                     except ValueError as e: status.setText(str(e))
                 reply.deleteLater()
             reply.finished.connect(done)
