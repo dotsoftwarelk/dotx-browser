@@ -51,6 +51,32 @@ def load_data(path: Path) -> dict:
         pass
     return {}
 
+def validated_state(data: dict) -> dict:
+    """Ignore malformed settings rather than crashing during startup."""
+    def records(key: str) -> list:
+        items = data.get(key)
+        if not isinstance(items, list):
+            return []
+        result = []
+        for item in items[-1000:]:
+            if not isinstance(item, dict):
+                continue
+            url, title = item.get('url'), item.get('title')
+            if not isinstance(url, str) or not isinstance(title, str):
+                continue
+            try:
+                parsed = urlsplit(url)
+                if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password:
+                    continue
+                _ = parsed.port
+            except ValueError:
+                continue
+            result.append({'url': url, 'title': title})
+        return result
+    search = data.get('search')
+    return {'bookmarks': records('bookmarks'), 'history': records('history'),
+            'search': search if isinstance(search, str) and search in SEARCH else 'DuckDuckGo'}
+
 def save_data(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(dir=path.parent, prefix='.dotx-', suffix='.tmp')

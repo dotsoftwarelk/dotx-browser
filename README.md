@@ -15,7 +15,7 @@ cd desktop
 python -m dotx
 ```
 
-The prototype supports multiple reorderable tabs, tab duplication and session-only reopen, address/search input, back/forward/reload, find in page, zoom, bookmarks, history, a download save prompt, search selection and workspace website shortcuts. It does not implement private browsing, account connections, secure token storage, automatic updates, or complete permission controls. The shortcuts are not API connections. It is not yet suitable for sensitive browsing.
+The prototype supports multiple reorderable tabs, tab duplication and session-only reopen, address/search input, back/forward/reload, find in page, zoom, bookmarks, history, a download save prompt, search selection and workspace website shortcuts. An experimental private window uses an off-the-record profile and does not save DOTX history or bookmarks; downloads remain on disk. It does not implement account connections, secure token storage, automatic updates, or complete permission controls. The shortcuts are not API connections. It is not yet suitable for sensitive browsing.
 
 Generate and check the site:
 

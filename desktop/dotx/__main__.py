@@ -1,15 +1,16 @@
 import sys
 from pathlib import Path
-from PySide6.QtCore import QStandardPaths, Qt, QUrl
+from PySide6.QtCore import QStandardPaths, Qt, QUrl, QTimer
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (QApplication, QComboBox, QFileDialog, QInputDialog, QLineEdit,
     QListWidget, QMainWindow, QMessageBox, QProgressBar, QTabWidget, QToolBar, QDialog,
     QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QMenu)
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from .core import normalize_input, load_data, save_data, SEARCH
+from .core import normalize_input, load_data, save_data, validated_state, SEARCH
 
 APP_NAME = 'DOTX Browser — development prototype'
+OPEN_WINDOWS = []
 PROVIDERS = {
     'Dropbox': 'https://www.dropbox.com/', 'Google Docs': 'https://docs.google.com/',
     'Google Drive': 'https://drive.google.com/', 'Linear': 'https://linear.app/',
@@ -23,22 +24,26 @@ class Page(QWebEnginePage):
         return url.scheme().lower() in ('http', 'https', 'about', 'data', 'blob')
 
 class Browser(QMainWindow):
-    def __init__(self):
+    def __init__(self, private=False):
         super().__init__()
-        self.setWindowTitle(APP_NAME)
+        self.private = private
+        self.setWindowTitle(APP_NAME + (' — Private window' if private else ''))
         self.resize(1200, 780)
         location = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)
         self.root = Path(location)
         self.path = self.root / 'state.json'
-        self.data = load_data(self.path)
-        self.data.setdefault('bookmarks', [])
-        self.data.setdefault('history', [])
-        self.data.setdefault('search', 'DuckDuckGo')
+        self.data = validated_state({} if private else load_data(self.path))
         self.closed_tabs = []  # Session-only; never sent to a server.
         # Profile belongs to the application so pages are destroyed before the profile.
-        self.profile = QWebEngineProfile('dotx', QApplication.instance())
-        self.profile.setPersistentStoragePath(str(self.root / 'web'))
-        self.profile.setCachePath(str(self.root / 'cache'))
+        if private:
+            # An unnamed WebEngine profile is off-the-record; it does not persist cookies/cache.
+            self.profile = QWebEngineProfile(QApplication.instance())
+            # Delete the transient profile after its window and pages are destroyed.
+            self.destroyed.connect(self.profile.deleteLater)
+        else:
+            self.profile = QWebEngineProfile('dotx', QApplication.instance())
+            self.profile.setPersistentStoragePath(str(self.root / 'web'))
+            self.profile.setCachePath(str(self.root / 'cache'))
         self.profile.downloadRequested.connect(self.download)
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
@@ -66,6 +71,7 @@ class Browser(QMainWindow):
         self.action(bar, 'Workspace', self.workspace, None, 'Open workspace')
         self.action(bar, 'Settings', self.settings, None, 'Browser settings')
         tools = self.menuBar().addMenu('Tools')
+        self.menu_action(tools, 'New private window', self.open_private_window, 'Ctrl+Shift+N')
         self.menu_action(tools, 'Focus address bar', self.focus_address, 'Ctrl+L')
         self.menu_action(tools, 'Close tab', lambda: self.close_tab(self.tabs.currentIndex()), 'Ctrl+W')
         self.menu_action(tools, 'Reopen closed tab', self.reopen_closed, 'Ctrl+Shift+T')
@@ -79,7 +85,7 @@ class Browser(QMainWindow):
         self.progress.setMaximumWidth(100)
         self.progress.hide()
         self.statusBar().addPermanentWidget(self.progress)
-        self.statusBar().showMessage('Ready')
+        self.statusBar().showMessage('Private window: browsing history is not saved; downloads remain on disk.' if private else 'Ready')
         self.setStyleSheet('''QMainWindow,QDialog {background:#101928;color:#e8efff} QToolBar {background:#141f31;border:0;padding:9px;spacing:6px} QLineEdit {background:#202f45;color:white;border:1px solid #344963;border-radius:8px;padding:8px} QToolButton,QPushButton {color:#dce9ff;background:#22344c;border:1px solid #314761;border-radius:6px;padding:7px} QToolButton:hover,QPushButton:hover {background:#304b69} QTabWidget::pane {border:0} QTabBar::tab {background:#19283a;color:#bacbe2;padding:10px 18px;min-width:100px} QTabBar::tab:selected {background:#2b405a;color:white} QListWidget,QComboBox {background:#202f45;color:white;border:1px solid #344963;padding:6px} QLabel {color:#e8efff}''')
         self.new_tab()
 
@@ -97,6 +103,13 @@ class Browser(QMainWindow):
         action.triggered.connect(lambda checked=False: handler())
         menu.addAction(action)
         return action
+
+    def open_private_window(self):
+        window = Browser(private=True)
+        window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        OPEN_WINDOWS.append(window)
+        window.destroyed.connect(lambda: OPEN_WINDOWS.remove(window) if window in OPEN_WINDOWS else None)
+        window.show()
 
     def focus_address(self):
         self.address.setFocus()
@@ -133,6 +146,7 @@ class Browser(QMainWindow):
         menu.exec(self.tabs.tabBar().mapToGlobal(position))
 
     def save(self):
+        if self.private: return
         try: save_data(self.path, self.data)
         except OSError as e: self.statusBar().showMessage('Could not save browser data: ' + str(e), 8000)
 
@@ -140,6 +154,8 @@ class Browser(QMainWindow):
     def new_tab(self, url='about:blank'):
         view = QWebEngineView()
         view.setPage(Page(self.profile, view))
+        # Default deny until a reviewed, per-origin permission UI exists.
+        view.page().permissionRequested.connect(lambda permission: permission.deny())
         i = self.tabs.addTab(view, 'New tab')
         self.tabs.setCurrentIndex(i)
         view.titleChanged.connect(lambda title, v=view: self.title_changed(v, title))
@@ -168,7 +184,7 @@ class Browser(QMainWindow):
             self.progress.setVisible(progress < 100)
     def finished(self, view, ok):
         url = view.url().toString()
-        if ok and view.url().scheme() in ('http', 'https'):
+        if not self.private and ok and view.url().scheme() in ('http', 'https'):
             self.data['history'].append({'title': view.title() or url, 'url': url})
             self.data['history'] = self.data['history'][-1000:]
             self.save()
@@ -182,6 +198,9 @@ class Browser(QMainWindow):
     def forward(self): self.view().forward()
     def reload(self): self.view().reload()
     def bookmark(self):
+        if self.private:
+            self.statusBar().showMessage('Bookmarks are unavailable in private windows', 5000)
+            return
         url = self.view().url().toString()
         if self.view().url().scheme() not in ('http', 'https'): return
         if not any(x.get('url') == url for x in self.data['bookmarks']):
@@ -242,10 +261,15 @@ class Browser(QMainWindow):
         self.statusBar().showMessage('Download started', 5000)
 
 def main():
-    app = QApplication(sys.argv)
+    smoke = '--smoke-test' in sys.argv
+    app = QApplication([sys.argv[0]] if smoke else sys.argv)
     app.setApplicationName('DOTX Browser')
     app.setOrganizationName('dotsoftwarelk')
     window = Browser(); window.show()
+    if smoke:
+        window.view().loadFinished.connect(lambda ok: app.exit(0 if ok else 1))
+        QTimer.singleShot(15000, lambda: app.exit(2))
+        window.view().setHtml('<html><title>DOTX smoke test</title><body>Ready</body></html>')
     return app.exec()
 
 if __name__ == '__main__': sys.exit(main())

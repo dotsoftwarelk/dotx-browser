@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from dotx.core import normalize_input, save_data, load_data
+from dotx.core import normalize_input, save_data, load_data, validated_state
 
 class CoreTests(unittest.TestCase):
     def test_search(self): self.assertEqual(normalize_input('hello world'), 'https://duckduckgo.com/?q=hello+world')
@@ -11,6 +11,11 @@ class CoreTests(unittest.TestCase):
     def test_unsafe_scheme(self):
         for value in ['file:///etc/passwd', 'javascript://evil', 'https://u:p@example.com', 'https://example.com:xyz']:
             with self.subTest(value=value), self.assertRaises(ValueError): normalize_input(value)
+    def test_malformed_state(self):
+        data = {'bookmarks': 'broken', 'history': [None, {'title': 'x', 'url': 'file:///etc/passwd'},
+                {'title': 'valid', 'url': 'https://example.org/'}], 'search': ['bad']}
+        self.assertEqual(validated_state(data), {'bookmarks': [], 'history': [
+            {'title': 'valid', 'url': 'https://example.org/'}], 'search': 'DuckDuckGo'})
     def test_save(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / 'nested' / 'state.json'

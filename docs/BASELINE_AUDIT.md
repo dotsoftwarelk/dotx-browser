@@ -10,16 +10,16 @@ A small PySide6/Qt WebEngine prototype and static multipage site were created fr
 
 ## Local verification (Linux sandbox)
 
-- `PYTHONPATH=desktop python -m unittest discover -s desktop/tests -v`: 6 tests passed (address normalization and local state persistence).
+- `PYTHONPATH=desktop python -m unittest discover -s desktop/tests -v`: 7 tests passed (address normalization, malformed state and local state persistence).
 - `python scripts/build_site.py` and `python scripts/check_site.py`: 11 pages generated; relative local paths and basic metadata passed.
 - `python -m compileall -q desktop scripts`: passed.
-- `QT_QPA_PLATFORM=offscreen QTWEBENGINE_DISABLE_SANDBOX=1 QTWEBENGINE_CHROMIUM_FLAGS='--disable-gpu' PYTHONPATH=desktop python scripts/smoke_desktop.py`: passed local HTTP navigation, window construction, tab creation/closure, bookmark, history, tab duplication, zoom and state file. Sandboxing was disabled **only for this container test**, not in product code. Graphics fallback warnings occurred in this headless environment.
+- `QT_QPA_PLATFORM=offscreen QTWEBENGINE_DISABLE_SANDBOX=1 QTWEBENGINE_CHROMIUM_FLAGS='--disable-gpu' PYTHONPATH=desktop python scripts/smoke_desktop.py`: passed local HTTP navigation, window construction, tab creation/closure, bookmark, history, tab duplication, zoom, state file and an off-the-record private profile. Sandboxing was disabled **only for this container test**, not in product code. Graphics fallback warnings occurred in this headless environment.
 
 Not tested: real-provider authorization, website in a full browser or mobile layouts, live external links, deployment, accessibility audit, certificate failure behavior, downloads on Windows, permission handling, multi-tab load/performance, recovery, or Windows installation and uninstallation. Static checks do not prove visual correctness or runtime behavior.
 
 ## Priority gaps
 
-1. A threat model and independent security review; explicit per-origin permission UI; private browsing and comprehensive data deletion.
+1. A threat model and independent security review; explicit per-origin permission UI; additional private-browsing verification and comprehensive data deletion.
 2. Secure, provider-specific OAuth implementation with official documented flows, OS credential storage and mock/real-account tests. None currently exists.
 3. Browser completeness: startup/session restoration, bookmark folders, complete download manager, popup/window handling, more settings, accessibility and robust failure handling.
 4. Windows CI, actual installer, signed or clearly unsigned release, checksums, clean-install/upgrade/uninstall testing.
