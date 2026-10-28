@@ -1,0 +1,2 @@
+# Qt for Python including Qt WebEngine; review licenses before distribution.
+PySide6>=6.8,<6.11

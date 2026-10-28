@@ -1,0 +1,3 @@
+# Windows build
+
+There is currently no reproducible Windows installer pipeline or packaged binary. Source execution instructions are in README. Do not treat Linux smoke testing as Windows validation. To prepare a release, select and pin a supported Windows x64 Python/Qt toolchain; review Qt/Chromium licenses; package WebEngine processes, resources and runtime dependencies; create a real installer; test clean installation, upgrade, uninstall, navigation, downloads and persistence on Windows 10/11; and publish checksums. Sign only with a legitimate certificate, otherwise label artifacts unsigned. No such steps have been completed here.

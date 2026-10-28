@@ -1,0 +1,1 @@
+"""DOTX Browser development prototype."""
