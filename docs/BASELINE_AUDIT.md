@@ -28,4 +28,4 @@ Not tested: real-provider authorization, website in a full browser or mobile lay
 
 ## Delivery state
 
-Development source only. No commit, push, pull request, release, or deployment has been made. All acceptance checkboxes requiring Windows, provider API, or production verification remain unmet.
+Development source only. A private GitHub repository, `dotsoftwarelk/dotx-browser`, was created and the prototype was pushed to `main`. GitHub rejected Pages enablement with HTTP 422 because the current plan does not support Pages for this private repository. No pull request, release, or deployment has been made. All acceptance checkboxes requiring Windows, provider API, or production verification remain unmet.
