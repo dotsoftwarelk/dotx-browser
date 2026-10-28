@@ -2,6 +2,7 @@
 
 ## Unreleased — development prototype
 
+- Added opt-in tab restoration, tab search, bookmark folders and JSON import/export, cookie/cache deletion requests, scheme indicators and user-initiated new-tab handling.
 - Added unauthenticated GitHub public repository search and a download manager with progress, pause, resume and cancellation.
 - Added experimental off-the-record private windows, default permission denial, malformed-state handling and a Windows development build workflow.
 - Added tab duplication, session-only reopen, find, zoom and keyboard shortcuts.

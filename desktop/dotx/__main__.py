@@ -4,12 +4,12 @@ from PySide6.QtCore import QStandardPaths, Qt, QUrl, QTimer
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (QApplication, QComboBox, QFileDialog, QInputDialog, QLineEdit,
     QListWidget, QMainWindow, QMessageBox, QProgressBar, QTabWidget, QToolBar, QDialog,
-    QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QMenu)
-from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineDownloadRequest
+    QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QMenu, QCheckBox)
+from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineDownloadRequest, QWebEngineNewWindowRequest
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from .services.github import search_url, parse_results, error_message
-from .core import normalize_input, load_data, save_data, validated_state, SEARCH
+from .core import normalize_input, load_data, save_data, validated_state, clean_session_urls, valid_web_url, SEARCH
 
 APP_NAME = 'DOTX Browser — development prototype'
 OPEN_WINDOWS = []
@@ -38,6 +38,11 @@ class Browser(QMainWindow):
         self.closed_tabs = []  # Session-only; never sent to a server.
         self.downloads = []
         self.download_refresh = None
+        self._restoring = True
+        self.session_timer = QTimer(self)
+        self.session_timer.setSingleShot(True)
+        self.session_timer.setInterval(300)
+        self.session_timer.timeout.connect(self.persist_session)
         # Profile belongs to the application so pages are destroyed before the profile.
         if private:
             # An unnamed WebEngine profile is off-the-record; it does not persist cookies/cache.
@@ -57,6 +62,7 @@ class Browser(QMainWindow):
         self.tabs.currentChanged.connect(self.sync)
         self.tabs.tabBar().setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tabs.tabBar().customContextMenuRequested.connect(self.tab_menu)
+        self.tabs.tabBar().tabMoved.connect(self.schedule_session_save)
         self.setCentralWidget(self.tabs)
         bar = QToolBar('Navigation')
         bar.setMovable(False)
@@ -65,6 +71,9 @@ class Browser(QMainWindow):
         self.action(bar, '→', self.forward, 'Alt+Right', 'Forward')
         self.action(bar, '↻', self.reload, 'Ctrl+R', 'Reload')
         self.action(bar, '＋', self.new_tab, 'Ctrl+T', 'New tab')
+        self.connection_label = QLabel('')
+        self.connection_label.setToolTip('Address scheme only. HTTPS is not a guarantee that a site is trustworthy; certificate checks are handled by WebEngine.')
+        bar.addWidget(self.connection_label)
         self.address = QLineEdit()
         self.address.setPlaceholderText('Search or enter an address')
         self.address.returnPressed.connect(self.navigate)
@@ -81,6 +90,9 @@ class Browser(QMainWindow):
         self.menu_action(tools, 'Close tab', lambda: self.close_tab(self.tabs.currentIndex()), 'Ctrl+W')
         self.menu_action(tools, 'Reopen closed tab', self.reopen_closed, 'Ctrl+Shift+T')
         self.menu_action(tools, 'Duplicate tab', self.duplicate_tab)
+        self.menu_action(tools, 'Search open tabs', self.search_tabs, 'Ctrl+Shift+A')
+        self.menu_action(tools, 'Stop loading', lambda: self.view().stop(), 'Esc')
+        self.menu_action(tools, 'Toggle fullscreen', self.toggle_fullscreen, 'F11')
         tools.addSeparator()
         self.menu_action(tools, 'Find in page', self.find_in_page, 'Ctrl+F')
         self.menu_action(tools, 'Zoom in', lambda: self.zoom(0.1), 'Ctrl++')
@@ -92,7 +104,10 @@ class Browser(QMainWindow):
         self.statusBar().addPermanentWidget(self.progress)
         self.statusBar().showMessage('Private window: browsing history is not saved; downloads remain on disk.' if private else 'Ready')
         self.setStyleSheet('''QMainWindow,QDialog {background:#101928;color:#e8efff} QToolBar {background:#141f31;border:0;padding:9px;spacing:6px} QLineEdit {background:#202f45;color:white;border:1px solid #344963;border-radius:8px;padding:8px} QToolButton,QPushButton {color:#dce9ff;background:#22344c;border:1px solid #314761;border-radius:6px;padding:7px} QToolButton:hover,QPushButton:hover {background:#304b69} QTabWidget::pane {border:0} QTabBar::tab {background:#19283a;color:#bacbe2;padding:10px 18px;min-width:100px} QTabBar::tab:selected {background:#2b405a;color:white} QListWidget,QComboBox {background:#202f45;color:white;border:1px solid #344963;padding:6px} QLabel {color:#e8efff}''')
-        self.new_tab()
+        startup = self.data['session_urls'] if self.data['restore_tabs'] and not self.private else []
+        for url in startup or ['about:blank']:
+            self.new_tab(url)
+        self._restoring = False
 
     def action(self, toolbar, text, handler, shortcut, tooltip):
         a = QAction(text, self)
@@ -115,6 +130,49 @@ class Browser(QMainWindow):
         OPEN_WINDOWS.append(window)
         window.destroyed.connect(lambda: OPEN_WINDOWS.remove(window) if window in OPEN_WINDOWS else None)
         window.show()
+
+    def schedule_session_save(self, *args):
+        if not self.private and not self._restoring and self.data['restore_tabs']:
+            self.session_timer.start()
+
+    def persist_session(self):
+        if self.private or self._restoring or not self.data['restore_tabs']:
+            return
+        urls = [self.tabs.widget(i).url().toString() for i in range(self.tabs.count())]
+        self.data['session_urls'] = clean_session_urls(urls)
+        self.save()
+
+    def closeEvent(self, event):
+        self.session_timer.stop()
+        self.persist_session()
+        super().closeEvent(event)
+
+    def toggle_fullscreen(self):
+        if self.isFullScreen(): self.showNormal()
+        else: self.showFullScreen()
+
+    def search_tabs(self):
+        from PySide6.QtWidgets import QListWidgetItem
+        dialog = QDialog(self); dialog.setWindowTitle('Search open tabs'); dialog.resize(600, 400)
+        layout = QVBoxLayout(dialog)
+        query = QLineEdit(); query.setPlaceholderText('Filter tabs by title or address'); layout.addWidget(query)
+        listing = QListWidget(); layout.addWidget(listing)
+        def populate():
+            listing.clear()
+            needle = query.text().casefold()
+            for i in range(self.tabs.count()):
+                view = self.tabs.widget(i); title = self.tabs.tabText(i); url = view.url().toString()
+                if needle in (title + ' ' + url).casefold():
+                    item = QListWidgetItem(f'{title}\n{url}')
+                    item.setData(Qt.ItemDataRole.UserRole, i); listing.addItem(item)
+            if listing.count(): listing.setCurrentRow(0)
+        def select():
+            item = listing.currentItem()
+            if item is not None: self.tabs.setCurrentIndex(item.data(Qt.ItemDataRole.UserRole)); dialog.accept()
+        button = QPushButton('Switch to selected tab'); button.clicked.connect(select); layout.addWidget(button)
+        query.textChanged.connect(populate); query.returnPressed.connect(select)
+        listing.itemDoubleClicked.connect(lambda item: select())
+        populate(); dialog.exec()
 
     def focus_address(self):
         self.address.setFocus()
@@ -161,6 +219,7 @@ class Browser(QMainWindow):
         view.setPage(Page(self.profile, view))
         # Default deny until a reviewed, per-origin permission UI exists.
         view.page().permissionRequested.connect(lambda permission: permission.deny())
+        view.page().newWindowRequested.connect(self.handle_new_window)
         i = self.tabs.addTab(view, 'New tab')
         self.tabs.setCurrentIndex(i)
         view.titleChanged.connect(lambda title, v=view: self.title_changed(v, title))
@@ -170,6 +229,21 @@ class Browser(QMainWindow):
         view.loadFinished.connect(lambda ok, v=view: self.finished(v, ok))
         view.setUrl(QUrl(url))
         return view
+    def handle_new_window(self, request):
+        # Do not allow unprompted popup creation. A genuine user gesture may open a tab.
+        if not request.isUserInitiated():
+            self.statusBar().showMessage('Blocked an unsolicited popup', 4000)
+            return
+        url = request.requestedUrl()
+        if not url.isEmpty() and url.scheme().lower() not in ('http', 'https', 'about'):
+            self.statusBar().showMessage('Blocked an unsupported external address', 4000)
+            return
+        old = self.tabs.currentIndex()
+        new_view = self.new_tab()
+        request.openIn(new_view.page())
+        if request.destination() == QWebEngineNewWindowRequest.DestinationType.InNewBackgroundTab:
+            self.tabs.setCurrentIndex(old)
+
     def close_tab(self, index):
         widget = self.tabs.widget(index)
         if widget and widget.url().scheme() in ('http', 'https'):
@@ -178,11 +252,17 @@ class Browser(QMainWindow):
         self.tabs.removeTab(index)
         if widget: widget.deleteLater()
         if self.tabs.count() == 0: self.new_tab()
+        self.schedule_session_save()
     def title_changed(self, view, title):
         i = self.tabs.indexOf(view)
         if i >= 0: self.tabs.setTabText(i, (title or 'New tab')[:35])
     def url_changed(self, view, url):
-        if view == self.view(): self.address.setText('' if url.toString() == 'about:blank' else url.toString())
+        if view == self.view():
+            self.address.setText('' if url.toString() == 'about:blank' else url.toString())
+            scheme = url.scheme().lower()
+            self.connection_label.setText('HTTP' if scheme == 'http' else 'HTTPS' if scheme == 'https' else '')
+            self.connection_label.setStyleSheet('color:#ffb6a5' if scheme == 'http' else 'color:#b6c8db')
+        self.schedule_session_save()
     def loading(self, view, progress):
         if view == self.view():
             self.progress.setValue(progress)
@@ -209,7 +289,10 @@ class Browser(QMainWindow):
         url = self.view().url().toString()
         if self.view().url().scheme() not in ('http', 'https'): return
         if not any(x.get('url') == url for x in self.data['bookmarks']):
-            self.data['bookmarks'].append({'title': self.view().title() or url, 'url': url})
+            if len(self.data['bookmarks']) >= 10000:
+                self.statusBar().showMessage('Bookmark limit reached (10,000)', 5000)
+                return
+            self.data['bookmarks'].append({'title': self.view().title() or url, 'url': url, 'folder': 'Bookmarks'})
             self.save()
         self.statusBar().showMessage('Bookmark saved', 3000)
     def collection(self, key, title):
@@ -220,19 +303,65 @@ class Browser(QMainWindow):
         def populate():
             listing.clear()
             for x in reversed(self.data[key]):
-                if search.text().lower() in (x.get('title', '') + x.get('url', '')).lower():
+                if search.text().lower() in (x.get('title', '') + x.get('url', '') + x.get('folder', '')).lower():
                     from PySide6.QtWidgets import QListWidgetItem
-                    item = QListWidgetItem(x.get('title', '') + '\n' + x.get('url', ''))
+                    item = QListWidgetItem(('[' + x.get('folder', 'Bookmarks') + '] ' if key == 'bookmarks' else '') + x.get('title', '') + '\n' + x.get('url', ''))
                     item.setData(Qt.ItemDataRole.UserRole, x)
                     listing.addItem(item)
         def open_item(item):
             self.new_tab(item.data(Qt.ItemDataRole.UserRole)['url']); dialog.accept()
+        def edit_bookmark():
+            item = listing.currentItem()
+            if not item: return
+            original = item.data(Qt.ItemDataRole.UserRole)
+            title, ok = QInputDialog.getText(dialog, 'Edit bookmark', 'Title:', text=original['title'])
+            if not ok: return
+            address, ok = QInputDialog.getText(dialog, 'Edit bookmark', 'HTTP or HTTPS address:', text=original['url'])
+            if not ok: return
+            if not valid_web_url(address.strip()):
+                QMessageBox.warning(dialog, 'Invalid address', 'Enter a valid HTTP or HTTPS address without embedded credentials.')
+                return
+            folder, ok = QInputDialog.getText(dialog, 'Edit bookmark', 'Folder:', text=original.get('folder', 'Bookmarks'))
+            if not ok: return
+            try: index = self.data[key].index(original)
+            except ValueError: return
+            self.data[key][index] = {'title': title.strip() or address.strip(), 'url': address.strip(), 'folder': folder.strip()[:100] or 'Bookmarks'}
+            self.save(); populate()
         def remove():
             item = listing.currentItem()
             if item:
                 self.data[key].remove(item.data(Qt.ItemDataRole.UserRole)); self.save(); populate()
         search.textChanged.connect(populate); listing.itemDoubleClicked.connect(open_item)
         buttons = QHBoxLayout(); delete = QPushButton('Delete selected'); delete.clicked.connect(remove); buttons.addWidget(delete)
+        if key == 'bookmarks':
+            edit = QPushButton('Edit selected'); edit.clicked.connect(edit_bookmark); buttons.addWidget(edit)
+            def export_bookmarks():
+                filename, _ = QFileDialog.getSaveFileName(dialog, 'Export bookmarks (contains page addresses)', 'dotx-bookmarks.json', 'JSON files (*.json)')
+                if filename:
+                    try:
+                        save_data(Path(filename), {'bookmarks': self.data['bookmarks']})
+                        QMessageBox.information(dialog, 'Export complete', 'Bookmarks were exported as a local JSON file.')
+                    except OSError as e: QMessageBox.warning(dialog, 'Export failed', str(e))
+            def import_bookmarks():
+                filename, _ = QFileDialog.getOpenFileName(dialog, 'Import DOTX bookmarks', '', 'JSON files (*.json)')
+                if not filename: return
+                try:
+                    path = Path(filename)
+                    if path.stat().st_size > 2_000_000: raise ValueError('File is too large (maximum 2 MB).')
+                    incoming = load_data(path)
+                    if not isinstance(incoming.get('bookmarks'), list): raise ValueError('This is not a DOTX bookmarks file.')
+                    records = validated_state(incoming)['bookmarks']
+                    existing = {x['url'] for x in self.data['bookmarks']}
+                    added = 0
+                    for record in records:
+                        if record['url'] not in existing and len(self.data['bookmarks']) < 10000:
+                            self.data['bookmarks'].append(record); existing.add(record['url']); added += 1
+                    self.save(); populate()
+                    QMessageBox.information(dialog, 'Import complete', f'Added {added} bookmarks; existing addresses were kept. Maximum: 10,000 bookmarks.')
+                except (OSError, ValueError) as e: QMessageBox.warning(dialog, 'Import failed', str(e))
+            export = QPushButton('Export JSON…'); export.clicked.connect(export_bookmarks); buttons.addWidget(export)
+            if not self.private:
+                imp = QPushButton('Import JSON…'); imp.clicked.connect(import_bookmarks); buttons.addWidget(imp)
         if key == 'history':
             clear = QPushButton('Clear history')
             def clear_history():
@@ -301,8 +430,36 @@ class Browser(QMainWindow):
         dialog.exec()
         if active['reply'] is not None: active['reply'].abort()
     def settings(self):
-        choice, ok = QInputDialog.getItem(self, 'Search settings', 'Default search engine', list(SEARCH), list(SEARCH).index(self.data['search']) if self.data['search'] in SEARCH else 0, False)
-        if ok: self.data['search'] = choice; self.save()
+        dialog = QDialog(self); dialog.setWindowTitle('Browser settings'); dialog.resize(520, 330)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel('Default search engine'))
+        search = QComboBox(); search.addItems(list(SEARCH)); search.setCurrentText(self.data['search']); layout.addWidget(search)
+        restore = QCheckBox('Restore open tabs on startup (up to 25)')
+        restore.setChecked(self.data['restore_tabs'])
+        restore.setEnabled(not self.private)
+        layout.addWidget(restore)
+        info = QLabel('When enabled, page addresses (including query strings) are saved locally. Private-window tabs are never restored. Turning it off removes the saved list.')
+        info.setWordWrap(True); layout.addWidget(info)
+        if self.private:
+            warning = QLabel('Changes in this private window are temporary.'); warning.setWordWrap(True); layout.addWidget(warning)
+        def clear_site_data():
+            question = ('Delete cookies and HTTP cache for this profile? This may sign you out. '
+                        'Other site storage, saved bookmarks, history and downloads are not removed.')
+            if QMessageBox.question(dialog, 'Clear cookies and cache', question) == QMessageBox.StandardButton.Yes:
+                self.profile.cookieStore().deleteAllCookies()
+                self.profile.clearHttpCache()
+                QMessageBox.information(dialog, 'Clearing requested', 'Cookie and cache deletion was requested. Other site data may remain.')
+        clear = QPushButton('Clear cookies and HTTP cache…'); clear.clicked.connect(clear_site_data); layout.addWidget(clear)
+        buttons = QHBoxLayout(); cancel = QPushButton('Cancel'); save_button = QPushButton('Save settings')
+        cancel.clicked.connect(dialog.reject); save_button.clicked.connect(dialog.accept)
+        buttons.addWidget(cancel); buttons.addWidget(save_button); layout.addLayout(buttons)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.data['search'] = search.currentText()
+            if not self.private:
+                self.data['restore_tabs'] = restore.isChecked()
+                if self.data['restore_tabs']: self.persist_session()
+                else:
+                    self.session_timer.stop(); self.data['session_urls'] = []; self.save()
     def download_manager(self):
         dialog = QDialog(self); dialog.setWindowTitle('Downloads'); dialog.resize(640, 400)
         layout = QVBoxLayout(dialog)

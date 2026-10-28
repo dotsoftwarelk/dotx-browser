@@ -18,8 +18,7 @@ def normalize_input(value: str, search: str = 'DuckDuckGo') -> str:
         try:
             parsed = urlsplit(value)
             # Never pass arbitrary OS handlers, credentials, malformed ports, or local files to the engine.
-            if parsed.scheme.lower() in ('http', 'https') and parsed.hostname and not parsed.username and not parsed.password:
-                _ = parsed.port
+            if valid_web_url(value):
                 return value
         except ValueError:
             pass
@@ -51,6 +50,21 @@ def load_data(path: Path) -> dict:
         pass
     return {}
 
+def valid_web_url(url: object) -> bool:
+    if not isinstance(url, str) or not url or len(url) > 8192 or any(ord(ch) <= 32 or ord(ch) == 127 for ch in url):
+        return False
+    try:
+        parsed = urlsplit(url)
+        return bool(parsed.scheme in ('http', 'https') and parsed.hostname
+                    and parsed.username is None and parsed.password is None and (parsed.port is None or 0 < parsed.port < 65536))
+    except ValueError:
+        return False
+
+def clean_session_urls(urls: object) -> list[str]:
+    if not isinstance(urls, list):
+        return []
+    return [url for url in urls[:25] if valid_web_url(url)]
+
 def validated_state(data: dict) -> dict:
     """Ignore malformed settings rather than crashing during startup."""
     def records(key: str) -> list:
@@ -58,24 +72,26 @@ def validated_state(data: dict) -> dict:
         if not isinstance(items, list):
             return []
         result = []
-        for item in items[-1000:]:
+        selected = items[:10000] if key == 'bookmarks' else items[-1000:]
+        for item in selected:
             if not isinstance(item, dict):
                 continue
             url, title = item.get('url'), item.get('title')
             if not isinstance(url, str) or not isinstance(title, str):
                 continue
-            try:
-                parsed = urlsplit(url)
-                if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password:
-                    continue
-                _ = parsed.port
-            except ValueError:
+            if not valid_web_url(url):
                 continue
-            result.append({'url': url, 'title': title})
+            record = {'url': url, 'title': title}
+            if key == 'bookmarks':
+                folder = item.get('folder')
+                record['folder'] = (folder.strip()[:100] or 'Bookmarks') if isinstance(folder, str) else 'Bookmarks'
+            result.append(record)
         return result
     search = data.get('search')
+    restore = data.get('restore_tabs') is True
     return {'bookmarks': records('bookmarks'), 'history': records('history'),
-            'search': search if isinstance(search, str) and search in SEARCH else 'DuckDuckGo'}
+            'search': search if isinstance(search, str) and search in SEARCH else 'DuckDuckGo',
+            'restore_tabs': restore, 'session_urls': clean_session_urls(data.get('session_urls')) if restore else []}
 
 def save_data(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
