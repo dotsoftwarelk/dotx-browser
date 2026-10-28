@@ -6,14 +6,16 @@ The workspace contained no project or Git repository. The requested GitHub conne
 
 ## Work performed
 
-A small PySide6/Qt WebEngine prototype and static multipage site were created from scratch. The site is a conceptual design, not a screenshot; its download page states that no installer is available. There is no provider API adapter, OAuth, token store, Supabase backend, database migration, cloud account, or automatic update system. Workspace actions are ordinary website links, not connections.
+A small PySide6/Qt WebEngine prototype and static multipage site were created from scratch. The site is a conceptual design, not a screenshot; its download page states that no installer is available. An unauthenticated GitHub public-repository search adapter now exists. There is no provider OAuth, token store, Supabase backend, database migration, cloud account, or automatic update system. Workspace website shortcuts are not account connections.
 
 ## Local verification (Linux sandbox)
 
-- `PYTHONPATH=desktop python -m unittest discover -s desktop/tests -v`: 7 tests passed (address normalization, malformed state and local state persistence).
+- `PYTHONPATH=desktop python -m unittest discover -s desktop/tests -v`: 12 tests passed (address normalization, malformed state, state persistence and GitHub search parsing/error mapping).
 - `python scripts/build_site.py` and `python scripts/check_site.py`: 11 pages generated; relative local paths and basic metadata passed.
 - `python -m compileall -q desktop scripts`: passed.
 - `QT_QPA_PLATFORM=offscreen QTWEBENGINE_DISABLE_SANDBOX=1 QTWEBENGINE_CHROMIUM_FLAGS='--disable-gpu' PYTHONPATH=desktop python scripts/smoke_desktop.py`: passed local HTTP navigation, window construction, tab creation/closure, bookmark, history, tab duplication, zoom, state file and an off-the-record private profile. Sandboxing was disabled **only for this container test**, not in product code. Graphics fallback warnings occurred in this headless environment.
+
+Also tested: a local Qt download with contents verification, and a live unauthenticated public GitHub search through the Qt UI.
 
 Not tested: real-provider authorization, website in a full browser or mobile layouts, live external links, deployment, accessibility audit, certificate failure behavior, downloads on Windows, permission handling, multi-tab load/performance, recovery, or Windows installation and uninstallation. Static checks do not prove visual correctness or runtime behavior.
 

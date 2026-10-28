@@ -1,6 +1,6 @@
 # DOTX Browser — development prototype
 
-DOTX is a new browser prototype by dotsoftwarelk, accompanied by a static product website. **This is not a release candidate.** No existing repository was available for inspection; the project was initialized from scratch and pushed to the public GitHub repository `dotsoftwarelk/dotx-browser`. The website is published on GitHub Pages. No Windows installer or native API integration has been verified.
+DOTX is a new browser prototype by dotsoftwarelk, accompanied by a static product website. **This is not a release candidate.** No existing repository was available for inspection; the project was initialized from scratch and pushed to the public GitHub repository `dotsoftwarelk/dotx-browser`. The website is published on GitHub Pages. No Windows installer or authenticated provider connection has been verified. Public GitHub repository search uses the GitHub REST API without authentication.
 
 ## Run from source
 
@@ -15,7 +15,7 @@ cd desktop
 python -m dotx
 ```
 
-The prototype supports multiple reorderable tabs, tab duplication and session-only reopen, address/search input, back/forward/reload, find in page, zoom, bookmarks, history, a download save prompt, search selection and workspace website shortcuts. An experimental private window uses an off-the-record profile and does not save DOTX history or bookmarks; downloads remain on disk. It does not implement account connections, secure token storage, automatic updates, or complete permission controls. The shortcuts are not API connections. It is not yet suitable for sensitive browsing.
+The prototype supports multiple reorderable tabs, tab duplication and session-only reopen, address/search input, back/forward/reload, find in page, zoom, bookmarks, history, a download manager with progress, pause/resume/cancel, search selection, workspace website shortcuts and unauthenticated GitHub public-repository search. An experimental private window uses an off-the-record profile and does not save DOTX history or bookmarks; downloads remain on disk. It does not implement account connections, secure token storage, automatic updates, or complete permission controls. Provider shortcuts are not account connections; GitHub search is public and unauthenticated. It is not yet suitable for sensitive browsing.
 
 Generate and check the site:
 

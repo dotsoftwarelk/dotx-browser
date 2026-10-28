@@ -31,6 +31,8 @@ jobs:
           $env:QTWEBENGINE_CHROMIUM_FLAGS='--disable-gpu'
           python scripts/smoke_desktop.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/smoke_download.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build development executable
         run: python -m PyInstaller --noconfirm --clean --onedir --windowed --name DOTX --paths desktop desktop/run.py
       - name: Validate x64 binary and WebEngine deployment
