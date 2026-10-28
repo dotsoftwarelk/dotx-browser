@@ -20,6 +20,10 @@ app = QApplication([]); app.setOrganizationName('dotsoftwarelk-test'); app.setAp
 w = Browser(); assert w.tabs.count() == 1
 w.new_tab(); assert w.tabs.count() == 2
 w.close_tab(1); assert w.tabs.count() == 1
+w.zoom(0.1); assert abs(w.view().zoomFactor() - 1.1) < 0.01
+w.reset_zoom(); assert abs(w.view().zoomFactor() - 1.0) < 0.01
+w.duplicate_tab(); assert w.tabs.count() == 2
+w.close_tab(1); assert w.tabs.count() == 1
 url = f'http://127.0.0.1:{server.server_port}/'
 result = {'ok': False}
 def finished(ok):
@@ -28,7 +32,11 @@ def finished(ok):
     assert any(x['url'] == url for x in w.data['bookmarks'])
     assert any(x['url'] == url for x in w.data['history'])
     assert w.path.is_file()
-    print('PASS: window, tabs, local navigation, history, bookmark and state file')
+    w.close_tab(0)
+    assert w.closed_tabs[-1] == url
+    w.reopen_closed()
+    assert w.view().url().toString() == url
+    print('PASS: window, tabs, duplication, reopen, zoom, local navigation, history, bookmark and state file')
     result['ok'] = True; app.quit()
 w.view().loadFinished.connect(finished)
 w.view().setUrl(QUrl(url))

@@ -13,7 +13,7 @@ A small PySide6/Qt WebEngine prototype and static multipage site were created fr
 - `PYTHONPATH=desktop python -m unittest discover -s desktop/tests -v`: 6 tests passed (address normalization and local state persistence).
 - `python scripts/build_site.py` and `python scripts/check_site.py`: 11 pages generated; relative local paths and basic metadata passed.
 - `python -m compileall -q desktop scripts`: passed.
-- `QT_QPA_PLATFORM=offscreen QTWEBENGINE_DISABLE_SANDBOX=1 QTWEBENGINE_CHROMIUM_FLAGS='--disable-gpu' PYTHONPATH=desktop python scripts/smoke_desktop.py`: passed local HTTP navigation, window construction, tab creation/closure, bookmark, history and state file. Sandboxing was disabled **only for this container test**, not in product code. Graphics fallback warnings occurred in this headless environment.
+- `QT_QPA_PLATFORM=offscreen QTWEBENGINE_DISABLE_SANDBOX=1 QTWEBENGINE_CHROMIUM_FLAGS='--disable-gpu' PYTHONPATH=desktop python scripts/smoke_desktop.py`: passed local HTTP navigation, window construction, tab creation/closure, bookmark, history, tab duplication, zoom and state file. Sandboxing was disabled **only for this container test**, not in product code. Graphics fallback warnings occurred in this headless environment.
 
 Not tested: real-provider authorization, website in a full browser or mobile layouts, live external links, deployment, accessibility audit, certificate failure behavior, downloads on Windows, permission handling, multi-tab load/performance, recovery, or Windows installation and uninstallation. Static checks do not prove visual correctness or runtime behavior.
 
@@ -28,4 +28,4 @@ Not tested: real-provider authorization, website in a full browser or mobile lay
 
 ## Delivery state
 
-Development source only. A private GitHub repository, `dotsoftwarelk/dotx-browser`, was created and the prototype was pushed to `main`. GitHub rejected Pages enablement with HTTP 422 because the current plan does not support Pages for this private repository. No pull request, release, or deployment has been made. All acceptance checkboxes requiring Windows, provider API, or production verification remain unmet.
+Development source only. A GitHub repository, `dotsoftwarelk/dotx-browser`, was created and the prototype was pushed to `main`. After the owner authorized public visibility, GitHub Pages was enabled, and a Pages workflow for commit `984e311` succeeded; the homepage returned HTTP 200 at https://dotsoftwarelk.github.io/dotx-browser/. No pull request or release has been made. All acceptance checkboxes requiring Windows, provider API, or production verification remain unmet.

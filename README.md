@@ -1,6 +1,6 @@
 # DOTX Browser — development prototype
 
-DOTX is a new browser prototype by dotsoftwarelk, accompanied by a static product website. **This is not a release candidate.** No existing repository was available for inspection; the project was initialized from scratch and pushed to the private GitHub repository `dotsoftwarelk/dotx-browser`. No Pages deployment, Windows installer, or native API integration has been verified.
+DOTX is a new browser prototype by dotsoftwarelk, accompanied by a static product website. **This is not a release candidate.** No existing repository was available for inspection; the project was initialized from scratch and pushed to the public GitHub repository `dotsoftwarelk/dotx-browser`. The website is published on GitHub Pages. No Windows installer or native API integration has been verified.
 
 ## Run from source
 
@@ -15,7 +15,7 @@ cd desktop
 python -m dotx
 ```
 
-The prototype supports multiple reorderable tabs, address/search input, back/forward/reload, bookmarks, history, a download save prompt, search selection and workspace website shortcuts. It does not implement private browsing, account connections, secure token storage, automatic updates, or complete permission controls. The shortcuts are not API connections. It is not yet suitable for sensitive browsing.
+The prototype supports multiple reorderable tabs, tab duplication and session-only reopen, address/search input, back/forward/reload, find in page, zoom, bookmarks, history, a download save prompt, search selection and workspace website shortcuts. It does not implement private browsing, account connections, secure token storage, automatic updates, or complete permission controls. The shortcuts are not API connections. It is not yet suitable for sensitive browsing.
 
 Generate and check the site:
 

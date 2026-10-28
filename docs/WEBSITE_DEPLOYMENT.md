@@ -1,6 +1,6 @@
 # GitHub Pages deployment
 
-The private repository `dotsoftwarelk/dotx-browser` exists and the prototype was pushed to `main`. Pages is not deployed: the GitHub API returned HTTP 422 stating that the current plan does not support Pages for this private repository. The owner must choose a supported plan or explicitly decide whether to make the source public. Do not change repository visibility without owner approval. Select a project license before public distribution. Do not place a token in a Git URL, source file, shell history or chat.
+The public repository `dotsoftwarelk/dotx-browser` exists and the prototype was pushed to `main`. After owner approval to make the repository public, Pages was enabled and deployed at https://dotsoftwarelk.github.io/dotx-browser/. Do not change repository visibility without owner approval. Select a project license before public distribution. Do not place a token in a Git URL, source file, shell history or chat.
 
 The proposed `.github/workflows/pages.yml` builds and checks the static site, uploads only `site/`, and deploys with GitHub Pages Actions. It runs on pushes to `main` and manual dispatch; change the branch if the actual publishing branch differs. In repository Settings → Pages, select GitHub Actions as source. Enable the appropriate Actions permissions, run the workflow, and check its actual deployment URL. Relative asset/page links are designed to work for a project subpath, but direct navigation, refresh and nested 404 behavior must be verified on the actual host. No custom domain or sitemap is assumed.
 

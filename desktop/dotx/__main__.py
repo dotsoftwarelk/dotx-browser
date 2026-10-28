@@ -4,7 +4,7 @@ from PySide6.QtCore import QStandardPaths, Qt, QUrl
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (QApplication, QComboBox, QFileDialog, QInputDialog, QLineEdit,
     QListWidget, QMainWindow, QMessageBox, QProgressBar, QTabWidget, QToolBar, QDialog,
-    QVBoxLayout, QPushButton, QLabel, QHBoxLayout)
+    QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QMenu)
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from .core import normalize_input, load_data, save_data, SEARCH
@@ -34,6 +34,7 @@ class Browser(QMainWindow):
         self.data.setdefault('bookmarks', [])
         self.data.setdefault('history', [])
         self.data.setdefault('search', 'DuckDuckGo')
+        self.closed_tabs = []  # Session-only; never sent to a server.
         # Profile belongs to the application so pages are destroyed before the profile.
         self.profile = QWebEngineProfile('dotx', QApplication.instance())
         self.profile.setPersistentStoragePath(str(self.root / 'web'))
@@ -45,6 +46,8 @@ class Browser(QMainWindow):
         self.tabs.setMovable(True)
         self.tabs.tabCloseRequested.connect(self.close_tab)
         self.tabs.currentChanged.connect(self.sync)
+        self.tabs.tabBar().setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.tabs.tabBar().customContextMenuRequested.connect(self.tab_menu)
         self.setCentralWidget(self.tabs)
         bar = QToolBar('Navigation')
         bar.setMovable(False)
@@ -62,6 +65,16 @@ class Browser(QMainWindow):
         self.action(bar, 'History', self.history, 'Ctrl+H', 'Open history')
         self.action(bar, 'Workspace', self.workspace, None, 'Open workspace')
         self.action(bar, 'Settings', self.settings, None, 'Browser settings')
+        tools = self.menuBar().addMenu('Tools')
+        self.menu_action(tools, 'Focus address bar', self.focus_address, 'Ctrl+L')
+        self.menu_action(tools, 'Close tab', lambda: self.close_tab(self.tabs.currentIndex()), 'Ctrl+W')
+        self.menu_action(tools, 'Reopen closed tab', self.reopen_closed, 'Ctrl+Shift+T')
+        self.menu_action(tools, 'Duplicate tab', self.duplicate_tab)
+        tools.addSeparator()
+        self.menu_action(tools, 'Find in page', self.find_in_page, 'Ctrl+F')
+        self.menu_action(tools, 'Zoom in', lambda: self.zoom(0.1), 'Ctrl++')
+        self.menu_action(tools, 'Zoom out', lambda: self.zoom(-0.1), 'Ctrl+-')
+        self.menu_action(tools, 'Reset zoom', self.reset_zoom, 'Ctrl+0')
         self.progress = QProgressBar()
         self.progress.setMaximumWidth(100)
         self.progress.hide()
@@ -77,6 +90,47 @@ class Browser(QMainWindow):
         a.triggered.connect(lambda checked=False: handler())
         toolbar.addAction(a)
         return a
+
+    def menu_action(self, menu, label, handler, shortcut=None):
+        action = QAction(label, self)
+        if shortcut: action.setShortcut(QKeySequence(shortcut))
+        action.triggered.connect(lambda checked=False: handler())
+        menu.addAction(action)
+        return action
+
+    def focus_address(self):
+        self.address.setFocus()
+        self.address.selectAll()
+
+    def find_in_page(self):
+        text, ok = QInputDialog.getText(self, 'Find in page', 'Find text:')
+        if ok: self.view().findText(text)
+
+    def zoom(self, amount):
+        view = self.view()
+        view.setZoomFactor(max(0.25, min(5.0, round(view.zoomFactor() + amount, 2))))
+        self.statusBar().showMessage(f'Zoom: {round(view.zoomFactor() * 100)}%', 2500)
+
+    def reset_zoom(self):
+        self.view().setZoomFactor(1.0)
+        self.statusBar().showMessage('Zoom: 100%', 2500)
+
+    def duplicate_tab(self, index=None):
+        view = self.tabs.widget(self.tabs.currentIndex() if index is None else index)
+        if view: self.new_tab(view.url().toString() or 'about:blank')
+
+    def reopen_closed(self):
+        if self.closed_tabs: self.new_tab(self.closed_tabs.pop())
+        else: self.statusBar().showMessage('No recently closed tabs', 2500)
+
+    def tab_menu(self, position):
+        index = self.tabs.tabBar().tabAt(position)
+        if index < 0: return
+        menu = QMenu(self)
+        menu.addAction('Duplicate tab', lambda: self.duplicate_tab(index))
+        menu.addAction('Close tab', lambda: self.close_tab(index))
+        menu.addAction('Reopen closed tab', self.reopen_closed)
+        menu.exec(self.tabs.tabBar().mapToGlobal(position))
 
     def save(self):
         try: save_data(self.path, self.data)
@@ -97,6 +151,9 @@ class Browser(QMainWindow):
         return view
     def close_tab(self, index):
         widget = self.tabs.widget(index)
+        if widget and widget.url().scheme() in ('http', 'https'):
+            self.closed_tabs.append(widget.url().toString())
+            self.closed_tabs = self.closed_tabs[-20:]
         self.tabs.removeTab(index)
         if widget: widget.deleteLater()
         if self.tabs.count() == 0: self.new_tab()
