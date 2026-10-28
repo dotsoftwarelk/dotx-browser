@@ -2,9 +2,10 @@
 import os
 import tempfile
 import threading
+from unittest.mock import patch
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 os.environ['XDG_DATA_HOME'] = tempfile.mkdtemp(prefix='dotx-chrome-')
-from PySide6.QtCore import QEventLoop, QTimer, QUrl, Qt
+from PySide6.QtCore import QEventLoop, QTimer, QUrl, Qt, QStandardPaths
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QToolBar
 from dotx.__main__ import Browser
@@ -21,6 +22,8 @@ class Handler(BaseHTTPRequestHandler):
 server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
 threading.Thread(target=server.serve_forever, daemon=True).start()
 app = QApplication([]); app.setApplicationName('DOTX-chrome-test'); app.setOrganizationName('dotsoftwarelk-test')
+location = patch.object(QStandardPaths, 'writableLocation', return_value=os.environ['XDG_DATA_HOME'])
+location.start()
 w = Browser(); w.show(); app.processEvents()
 
 def wait_load(trigger):
@@ -74,5 +77,5 @@ assert w.address.hasFocus()
 menus = w.menuBar().actions()
 menu = menus[0].menu()
 assert all(w.chrome_actions[name] in menu.actions() for name in ('bookmark', 'bookmarks', 'history', 'downloads', 'workspace', 'settings'))
-server.shutdown(); shiboken6.delete(w)
+server.shutdown(); shiboken6.delete(w); location.stop()
 print('PASS: actual navigation actions, per-tab progress, icon accessibility, themes, Ctrl+L and narrow layout')
