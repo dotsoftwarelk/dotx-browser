@@ -15,7 +15,10 @@ class CoreTests(unittest.TestCase):
         data = {'bookmarks': 'broken', 'history': [None, {'title': 'x', 'url': 'file:///etc/passwd'},
                 {'title': 'valid', 'url': 'https://example.org/'}], 'search': ['bad']}
         self.assertEqual(validated_state(data), {'bookmarks': [], 'history': [
-            {'title': 'valid', 'url': 'https://example.org/'}], 'search': 'DuckDuckGo', 'restore_tabs': False, 'session_urls': []})
+            {'title': 'valid', 'url': 'https://example.org/'}], 'search': 'DuckDuckGo', 'appearance': 'system', 'restore_tabs': False, 'session_urls': []})
+    def test_appearance_validation(self):
+        self.assertEqual(validated_state({'appearance':'light'})['appearance'], 'light')
+        self.assertEqual(validated_state({'appearance':'bogus'})['appearance'], 'system')
     def test_bookmark_folder_validation(self):
         state = validated_state({'bookmarks': [
             {'title': 'A', 'url': 'https://example.org', 'folder': ' Work '},

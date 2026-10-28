@@ -35,3 +35,9 @@ Development prototype and temporary unsigned build, not a release candidate. A G
 ## Connected Supabase security review
 
 An existing DOTX project had six RLS-enabled tables. Excess authenticated-role TRUNCATE, TRIGGER and REFERENCES privileges were revoked and verified; see `SUPABASE_AUDIT.md`. Owner isolation has not been exercised using two real user accounts and history-sync consent is not yet enforced by this app.
+
+## Website and desktop appearance follow-up
+
+The existing `main` architecture was retained. Website and desktop chrome gained light/dark/system palettes; desktop styling is in a separate module. The website shows a real development-browser screenshot captured on Linux with a staged local page. The temporary download status now checks GitHub's public Actions metadata and handles expired, missing, rate-limited and unavailable artifacts without publishing secrets. This is not a stable release. A configurable project-subpath base was added for deep 404 pages.
+
+Local evidence: 20 unit tests passed; Chromium browser checks covered desktop and mobile layouts, navigation, theme persistence, mocked download states, no-JavaScript fallback and a simulated project-subpath 404. A live browser metadata check returned the actual successful Windows workflow run. Linux Qt smoke tests used the offscreen plugin and disabled sandbox only within the isolated container. This follow-up does not verify real provider accounts, interactive Windows 10/11, independent security review or a stable release.

@@ -14,3 +14,4 @@ jobs:
         env:
           PYTHONPATH: desktop
       - run: python scripts/build_site.py && python scripts/check_site.py
+      - run: node scripts/test_download_js.js

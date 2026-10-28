@@ -88,10 +88,12 @@ def validated_state(data: dict) -> dict:
             result.append(record)
         return result
     search = data.get('search')
+    appearance = data.get('appearance')
+    if appearance not in ('system', 'light', 'dark'): appearance = 'system'
     restore = data.get('restore_tabs') is True
     return {'bookmarks': records('bookmarks'), 'history': records('history'),
             'search': search if isinstance(search, str) and search in SEARCH else 'DuckDuckGo',
-            'restore_tabs': restore, 'session_urls': clean_session_urls(data.get('session_urls')) if restore else []}
+            'appearance': appearance, 'restore_tabs': restore, 'session_urls': clean_session_urls(data.get('session_urls')) if restore else []}
 
 def save_data(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)

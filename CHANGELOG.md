@@ -2,6 +2,8 @@
 
 ## Unreleased — development prototype
 
+- Added light/dark/system themes to the website and browser chrome, a real Linux development-app screenshot, and live public build-metadata checking with safe unavailable states.
+
 - Added experimental session-only GitHub device authorization with public-client configuration and mocked tests; no live account verification.
 - Added opt-in tab restoration, tab search, bookmark folders and JSON import/export, cookie/cache deletion requests, scheme indicators and user-initiated new-tab handling.
 - Added unauthenticated GitHub public repository search and a download manager with progress, pause, resume and cancellation.

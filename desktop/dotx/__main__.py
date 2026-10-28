@@ -10,6 +10,7 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from .services.github import search_url, parse_results, error_message
 from .integrations.github_account import GitHubAccountDialog, GitHubSession
+from .theme import stylesheet
 from .core import normalize_input, load_data, save_data, validated_state, clean_session_urls, valid_web_url, SEARCH
 
 APP_NAME = 'DOTX Browser — development prototype'
@@ -105,11 +106,15 @@ class Browser(QMainWindow):
         self.progress.hide()
         self.statusBar().addPermanentWidget(self.progress)
         self.statusBar().showMessage('Private window: browsing history is not saved; downloads remain on disk.' if private else 'Ready')
-        self.setStyleSheet('''QMainWindow,QDialog {background:#101928;color:#e8efff} QToolBar {background:#141f31;border:0;padding:9px;spacing:6px} QLineEdit {background:#202f45;color:white;border:1px solid #344963;border-radius:8px;padding:8px} QToolButton,QPushButton {color:#dce9ff;background:#22344c;border:1px solid #314761;border-radius:6px;padding:7px} QToolButton:hover,QPushButton:hover {background:#304b69} QTabWidget::pane {border:0} QTabBar::tab {background:#19283a;color:#bacbe2;padding:10px 18px;min-width:100px} QTabBar::tab:selected {background:#2b405a;color:white} QListWidget,QComboBox {background:#202f45;color:white;border:1px solid #344963;padding:6px} QLabel {color:#e8efff}''')
+        self.apply_theme()
+        QApplication.styleHints().colorSchemeChanged.connect(self.apply_theme)
         startup = self.data['session_urls'] if self.data['restore_tabs'] and not self.private else []
         for url in startup or ['about:blank']:
             self.new_tab(url)
         self._restoring = False
+
+    def apply_theme(self, *args):
+        self.setStyleSheet(stylesheet(self.data['appearance']))
 
     def action(self, toolbar, text, handler, shortcut, tooltip):
         a = QAction(text, self)
@@ -445,6 +450,9 @@ class Browser(QMainWindow):
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel('Default search engine'))
         search = QComboBox(); search.addItems(list(SEARCH)); search.setCurrentText(self.data['search']); layout.addWidget(search)
+        layout.addWidget(QLabel('Appearance'))
+        appearance = QComboBox(); appearance.addItems(['System', 'Light', 'Dark'])
+        appearance.setCurrentText(self.data['appearance'].capitalize()); layout.addWidget(appearance)
         restore = QCheckBox('Restore open tabs on startup (up to 25)')
         restore.setChecked(self.data['restore_tabs'])
         restore.setEnabled(not self.private)
@@ -466,6 +474,8 @@ class Browser(QMainWindow):
         buttons.addWidget(cancel); buttons.addWidget(save_button); layout.addLayout(buttons)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.data['search'] = search.currentText()
+            self.data['appearance'] = appearance.currentText().lower()
+            self.apply_theme()
             if not self.private:
                 self.data['restore_tabs'] = restore.isChecked()
                 if self.data['restore_tabs']: self.persist_session()
