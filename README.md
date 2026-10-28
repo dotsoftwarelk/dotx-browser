@@ -1,6 +1,6 @@
 # DOTX Browser — development prototype
 
-DOTX is a new browser prototype by dotsoftwarelk, accompanied by a static product website. **This is not a release candidate.** No existing repository was available for inspection; the project was initialized from scratch and pushed to the public GitHub repository `dotsoftwarelk/dotx-browser`. The website is published on GitHub Pages. No Windows installer or authenticated provider connection has been verified. Public GitHub repository search uses the GitHub REST API without authentication.
+DOTX is a new browser prototype by dotsoftwarelk, accompanied by a static product website. **This is not a release candidate.** No existing repository was available for inspection; the project was initialized from scratch and pushed to the public GitHub repository `dotsoftwarelk/dotx-browser`. The website is published on GitHub Pages. An unsigned Windows development installer was built and smoke-tested on a GitHub Windows runner; it is not a stable release. Authenticated provider connections are not implemented. Public GitHub repository search uses the GitHub REST API without authentication.
 
 ## Run from source
 

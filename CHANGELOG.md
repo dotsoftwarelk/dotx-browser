@@ -8,4 +8,4 @@
 - Introduced a small PySide6/Qt WebEngine browser prototype and a static multipage website.
 - Added unit and headless local smoke checks, and GitHub Pages automation.
 - Added workspace website shortcuts; authenticated provider integrations are not implemented.
-- No Windows build, published software release, backend or OAuth connection has been verified. The static website was deployed via GitHub Pages.
+- An unsigned development installer was built and smoke-tested on Windows CI. There is no stable software release, integrated backend or OAuth connection. The static website was deployed via GitHub Pages.

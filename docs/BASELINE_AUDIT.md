@@ -6,7 +6,7 @@ The workspace contained no project or Git repository. The requested GitHub conne
 
 ## Work performed
 
-A small PySide6/Qt WebEngine prototype and static multipage site were created from scratch. The site is a conceptual design, not a screenshot; its download page states that no installer is available. An unauthenticated GitHub public-repository search adapter now exists. There is no provider OAuth, token store, Supabase backend, database migration, cloud account, or automatic update system. Workspace website shortcuts are not account connections.
+A small PySide6/Qt WebEngine prototype and static multipage site were created from scratch. The site is a conceptual design, not a screenshot; its download page distinguishes the temporary unsigned development installer from a stable release. An unauthenticated GitHub public-repository search adapter now exists. There is no provider OAuth, token store, integrated Supabase backend, cloud account, or automatic update system. A pre-existing connected DOTX Supabase project was discovered separately and had a targeted privilege-hardening migration applied; it is not connected to this app. Workspace website shortcuts are not account connections.
 
 ## Local verification (Linux sandbox)
 
@@ -17,17 +17,21 @@ A small PySide6/Qt WebEngine prototype and static multipage site were created fr
 
 Also tested: a local Qt download with contents verification, and a live unauthenticated public GitHub search through the Qt UI.
 
-Not tested: real-provider authorization, website in a full browser or mobile layouts, live external links, deployment, accessibility audit, certificate failure behavior, downloads on Windows, permission handling, multi-tab load/performance, recovery, or Windows installation and uninstallation. Static checks do not prove visual correctness or runtime behavior.
+Not tested: real-provider authorization, website in a full browser or mobile layouts, accessibility audit, certificate failure behavior, permission handling, multi-tab load/performance, recovery, interactive Windows 10/11 behavior, upgrade behavior and security review. Automated Windows runner source-level download, installation and uninstallation tests passed; live Pages deployment and page URLs returned HTTP 200. Static checks do not prove visual correctness or runtime behavior.
 
 ## Priority gaps
 
 1. A threat model and independent security review; explicit per-origin permission UI; additional private-browsing verification and comprehensive data deletion.
 2. Secure, provider-specific OAuth implementation with official documented flows, OS credential storage and mock/real-account tests. None currently exists.
 3. Browser completeness: startup/session restoration, bookmark folders, complete download manager, popup/window handling, more settings, accessibility and robust failure handling.
-4. Windows CI, actual installer, signed or clearly unsigned release, checksums, clean-install/upgrade/uninstall testing.
-5. Link the site to real release metadata and a verified support/security contact. Configure and verify Pages deployment.
+4. Stable Windows release, code signing or clear unsigned status, interactive acceptance, upgrade testing, and sustained performance testing.
+5. Link the site to actual stable release metadata when available and add a verified support/security contact.
 6. Decide whether optional Supabase sync is justified; design schema, RLS, retention and opt-in only if implemented.
 
 ## Delivery state
 
-Development source only. A GitHub repository, `dotsoftwarelk/dotx-browser`, was created and the prototype was pushed to `main`. After the owner authorized public visibility, GitHub Pages was enabled, and a Pages workflow for commit `984e311` succeeded; the homepage returned HTTP 200 at https://dotsoftwarelk.github.io/dotx-browser/. No pull request or release has been made. All acceptance checkboxes requiring Windows, provider API, or production verification remain unmet.
+Development prototype and temporary unsigned build, not a release candidate. A GitHub repository, `dotsoftwarelk/dotx-browser`, was created and the prototype was pushed to `main`. After the owner authorized public visibility, GitHub Pages was enabled, and a Pages workflow for commit `984e311` succeeded; the homepage returned HTTP 200 at https://dotsoftwarelk.github.io/dotx-browser/. No pull request or stable release has been made. Windows development CI for commit `03af4f6` succeeded on a Windows x64 runner and produced an unsigned, temporary artifact; see `WINDOWS_BUILD.md`. Acceptance criteria for stable release readiness, authenticated provider APIs and production security remain unmet.
+
+## Connected Supabase security review
+
+An existing DOTX project had six RLS-enabled tables. Excess authenticated-role TRUNCATE, TRIGGER and REFERENCES privileges were revoked and verified; see `SUPABASE_AUDIT.md`. Owner isolation has not been exercised using two real user accounts and history-sync consent is not yet enforced by this app.

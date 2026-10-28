@@ -1,6 +1,6 @@
 # Integration status
 
-The workspace opens the seven official websites. GitHub public repository search also uses the official REST API without authentication; no user account is connected. Other provider API operations are not implemented. There are no client IDs, callbacks, scopes, provider credentials, data operations, account status indicators or token storage in this prototype. No setup can enable authenticated provider connections yet. GitHub public search requires no app registration or account; searches and your IP address are sent to GitHub and are subject to its rate limits.
+The workspace opens the seven official websites. GitHub public repository search also uses the official REST API without authentication; no user account is connected. Other provider API operations are not implemented. There are no client IDs, callbacks, scopes, provider credentials, authenticated provider data operations, account status indicators or token storage in this prototype. No setup can enable authenticated provider connections yet. GitHub public search requires no app registration or account; searches and your IP address are sent to GitHub and are subject to its rate limits.
 
 | Service | Current behavior | Planned research before implementation |
 |---|---|---|

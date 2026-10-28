@@ -2,6 +2,13 @@ name: Windows development build
 on:
   push:
     branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'scripts/smoke_desktop.py'
+      - 'scripts/smoke_download.py'
+      - 'packaging/**'
+      - 'requirements*.txt'
+      - '.github/workflows/windows-development.yml'
   workflow_dispatch:
 permissions:
   contents: read
