@@ -6,7 +6,7 @@
 - `site/`: generated, static, relative-link website. `scripts/build_site.py` generates HTML; `assets/` contains authored CSS and SVG.
 - `.github/workflows/`: unit checks and a proposed Pages workflow; neither has run on GitHub.
 
-The WebEngine profile stores cookies/cache locally. Bookmarks, history, search settings and opt-in restored-tab URLs are in application data. Profile and browser state are not encrypted. No OAuth or remote backend is integrated into this prototype. A separate existing Supabase project was inspected; see `SUPABASE_AUDIT.md`. Design future integration modules per provider, with explicit state machines, minimum scopes, token storage outside settings and async I/O. Do not infer support for a common OAuth flow across providers.
+The WebEngine profile stores cookies/cache locally. Bookmarks, history, search settings and opt-in restored-tab URLs are in application data. Profile and browser state are not encrypted. An experimental, mock-tested GitHub device authorization flow verifies identity and keeps the token only in process memory. It is not yet live-account tested and no remote backend is integrated. A separate existing Supabase project was inspected; see `SUPABASE_AUDIT.md`. Design future integration modules per provider, with explicit state machines, minimum scopes, token storage outside settings and async I/O. Do not infer support for a common OAuth flow across providers.
 
 ## Design tokens
 

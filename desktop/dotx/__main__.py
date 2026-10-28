@@ -9,6 +9,7 @@ from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngin
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from .services.github import search_url, parse_results, error_message
+from .integrations.github_account import GitHubAccountDialog, GitHubSession
 from .core import normalize_input, load_data, save_data, validated_state, clean_session_urls, valid_web_url, SEARCH
 
 APP_NAME = 'DOTX Browser — development prototype'
@@ -37,6 +38,7 @@ class Browser(QMainWindow):
         self.data = validated_state({} if private else load_data(self.path))
         self.closed_tabs = []  # Session-only; never sent to a server.
         self.downloads = []
+        self.github_session = GitHubSession()
         self.download_refresh = None
         self._restoring = True
         self.session_timer = QTimer(self)
@@ -145,6 +147,7 @@ class Browser(QMainWindow):
     def closeEvent(self, event):
         self.session_timer.stop()
         self.persist_session()
+        self.github_session.clear()
         super().closeEvent(event)
 
     def toggle_fullscreen(self):
@@ -375,7 +378,7 @@ class Browser(QMainWindow):
         dialog = QDialog(self); dialog.setWindowTitle('Workspace'); dialog.resize(460, 460)
         layout = QVBoxLayout(dialog)
         layout.addWidget(QLabel('WORKSPACE  /  QUICK LAUNCH'))
-        text = QLabel('Open a service in a new tab. These are web links, not connected API accounts. Sign in on each provider’s own website.')
+        text = QLabel('These shortcuts open provider websites. GitHub public search and experimental GitHub account access are separate tools below.')
         text.setWordWrap(True); layout.addWidget(text)
         for name, url in PROVIDERS.items():
             button = QPushButton(name + '  ↗')
@@ -384,7 +387,15 @@ class Browser(QMainWindow):
         github = QPushButton('Search public GitHub repositories…')
         github.clicked.connect(lambda: (dialog.accept(), self.github_search()))
         layout.addWidget(github)
+        account = QPushButton('GitHub account — experimental…')
+        account.clicked.connect(lambda: (dialog.accept(), self.github_account()))
+        layout.addWidget(account)
         dialog.exec()
+    def github_account(self):
+        dialog = GitHubAccountDialog(self.github_session, self)
+        dialog.exec()
+        dialog.deleteLater()
+
     def github_search(self):
         dialog = QDialog(self); dialog.setWindowTitle('GitHub public search'); dialog.resize(680, 500)
         layout = QVBoxLayout(dialog)

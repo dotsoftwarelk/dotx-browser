@@ -9,6 +9,7 @@ on:
       - 'scripts/smoke_session.py'
       - 'scripts/smoke_settings.py'
       - 'scripts/smoke_bookmarks.py'
+      - 'scripts/smoke_github_device_mock.py'
       - 'packaging/**'
       - 'requirements*.txt'
       - '.github/workflows/windows-development.yml'
@@ -48,6 +49,8 @@ jobs:
           python scripts/smoke_settings.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/smoke_bookmarks.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/smoke_github_device_mock.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build development executable
         run: python -m PyInstaller --noconfirm --clean --onedir --windowed --name DOTX --paths desktop desktop/run.py
