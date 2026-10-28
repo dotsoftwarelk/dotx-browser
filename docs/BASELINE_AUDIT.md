@@ -15,7 +15,7 @@ A small PySide6/Qt WebEngine prototype and static multipage site were created fr
 - `python -m compileall -q desktop scripts`: passed.
 - `QT_QPA_PLATFORM=offscreen QTWEBENGINE_DISABLE_SANDBOX=1 QTWEBENGINE_CHROMIUM_FLAGS='--disable-gpu' PYTHONPATH=desktop python scripts/smoke_desktop.py`: passed local HTTP navigation, window construction, tab creation/closure, bookmark, history, tab duplication, zoom, state file and an off-the-record private profile. Sandboxing was disabled **only for this container test**, not in product code. Graphics fallback warnings occurred in this headless environment.
 
-Also tested locally: a Qt download with contents verification, a live unauthenticated public GitHub search through the Qt UI, opt-in session restoration, bookmark editing/import/export, settings controls and user-initiated/unsolicited popup behavior. The exact new source changes require their own Windows CI run; the earlier Windows build predates these features.
+Also tested locally: a Qt download with contents verification, a live unauthenticated public GitHub search through the Qt UI, opt-in session restoration, bookmark editing/import/export, settings controls and user-initiated/unsolicited popup behavior. Windows CI for commit `2c81713` also passed source-level tests for session restoration, settings, bookmarks, downloads and the mocked GitHub device flow; live account authorization remains unverified.
 
 Not tested: real-provider authorization, website in a full browser or mobile layouts, accessibility audit, certificate failure behavior, permission handling, multi-tab load/performance, recovery, interactive Windows 10/11 behavior, upgrade behavior and security review. Automated Windows runner source-level download, installation and uninstallation tests passed; live Pages deployment and page URLs returned HTTP 200. Static checks do not prove visual correctness or runtime behavior.
 
@@ -30,7 +30,7 @@ Not tested: real-provider authorization, website in a full browser or mobile lay
 
 ## Delivery state
 
-Development prototype and temporary unsigned build, not a release candidate. A GitHub repository, `dotsoftwarelk/dotx-browser`, was created and the prototype was pushed to `main`. After the owner authorized public visibility, GitHub Pages was enabled, and a Pages workflow for commit `984e311` succeeded; the homepage returned HTTP 200 at https://dotsoftwarelk.github.io/dotx-browser/. No pull request or stable release has been made. Windows development CI for commit `03af4f6` succeeded on a Windows x64 runner and produced an unsigned, temporary artifact; see `WINDOWS_BUILD.md`. Acceptance criteria for stable release readiness, authenticated provider APIs and production security remain unmet.
+Development prototype and temporary unsigned build, not a release candidate. A GitHub repository, `dotsoftwarelk/dotx-browser`, was created and the prototype was pushed to `main`. After the owner authorized public visibility, GitHub Pages was enabled, and a Pages workflow for commit `984e311` succeeded; the homepage returned HTTP 200 at https://dotsoftwarelk.github.io/dotx-browser/. No pull request or stable release has been made. Windows development CI for commit `2c81713` succeeded on a Windows x64 runner and produced an unsigned, temporary artifact; see `WINDOWS_BUILD.md`. Acceptance criteria for stable release readiness, authenticated provider APIs and production security remain unmet.
 
 ## Connected Supabase security review
 
