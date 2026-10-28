@@ -1,4 +1,4 @@
-# DOTX Browser — development prototype
+# DOTX Browser — BEYOND BROWSING. — development prototype
 
 DOTX is a new browser prototype by dotsoftwarelk, accompanied by a static product website. **This is not a release candidate.** No existing repository was available for inspection; the project was initialized from scratch and pushed to the public GitHub repository `dotsoftwarelk/dotx-browser`. The website is published on GitHub Pages. An unsigned Windows development installer for an earlier source snapshot was built and smoke-tested on a GitHub Windows runner; it is not a stable release. Consult Actions for subsequent builds. An experimental, session-only GitHub device authorization flow is implemented but requires owner configuration and has only mock tests, not real-account verification. Other provider account connections are not implemented. Public GitHub repository search uses the GitHub REST API without authentication.
 
