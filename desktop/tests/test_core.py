@@ -9,13 +9,21 @@ class CoreTests(unittest.TestCase):
     def test_http(self): self.assertEqual(normalize_input('http://example.com'), 'http://example.com')
     def test_empty(self): self.assertEqual(normalize_input(' '), 'about:blank')
     def test_unsafe_scheme(self):
-        for value in ['file:///etc/passwd', 'javascript://evil', 'https://u:p@example.com', 'https://example.com:xyz', 'https://@example.com', 'https://example.com:0', 'https://example.com/space path']:
+        for value in ['file:///etc/passwd', 'javascript://evil', 'https://u:p@example.com', 'https://example.com:xyz', 'https://@example.com', 'https://example.com:0', 'https://example.com/space path', 'https://example.com\\path']:
             with self.subTest(value=value), self.assertRaises(ValueError): normalize_input(value)
     def test_malformed_state(self):
         data = {'bookmarks': 'broken', 'history': [None, {'title': 'x', 'url': 'file:///etc/passwd'},
                 {'title': 'valid', 'url': 'https://example.org/'}], 'search': ['bad']}
         self.assertEqual(validated_state(data), {'bookmarks': [], 'history': [
-            {'title': 'valid', 'url': 'https://example.org/'}], 'search': 'DuckDuckGo', 'appearance': 'system', 'restore_tabs': False, 'session_urls': []})
+            {'title': 'valid', 'url': 'https://example.org/'}], 'search': 'DuckDuckGo', 'appearance': 'system', 'history_enabled': True, 'restore_tabs': False, 'session_urls': []})
+    def test_history_setting(self):
+        self.assertTrue(validated_state({})['history_enabled'])
+        self.assertFalse(validated_state({'history_enabled': False})['history_enabled'])
+        self.assertTrue(validated_state({'history_enabled': 'false'})['history_enabled'])
+    def test_implicit_url_validation(self):
+        for value in ('user@example.com', 'example.com:0', 'example.com:99999'):
+            with self.subTest(value=value), self.assertRaises(ValueError): normalize_input(value)
+        self.assertEqual(normalize_input('example.com:8080/path'), 'https://example.com:8080/path')
     def test_appearance_validation(self):
         self.assertEqual(validated_state({'appearance':'light'})['appearance'], 'light')
         self.assertEqual(validated_state({'appearance':'bogus'})['appearance'], 'system')

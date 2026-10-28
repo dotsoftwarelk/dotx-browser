@@ -5,6 +5,7 @@
 - Provider access: workspace shortcuts open websites; public GitHub search uses the REST API without sign-in. Experimental GitHub device sign-in requires a configured public OAuth app client ID and has only been mock-tested; other authenticated provider connections are not available.
 - Restoring tabs: opt in under Settings. URLs, including query strings, are saved locally; disabling the setting clears the saved list. Private windows are excluded.
 - Site data: Settings can request cookie and HTTP-cache deletion, but other website storage may remain.
+- History recording: Settings → Save browsing history can be switched off; this stops new DOTX history records without deleting old ones. Recently closed tabs remain in memory until the window closes, and opt-in restored tabs and site storage are separate.
 - History deletion: History → Clear history removes the app's history entries only; it does not clear WebEngine cookies or cache.
 - A temporary unsigned development installer is available from the documented Windows CI run; there is no stable installer or automatic update system.
 - If persistent state is corrupt, the prototype falls back to empty data; back up local data before troubleshooting. Application paths are chosen by Qt's `AppDataLocation`.

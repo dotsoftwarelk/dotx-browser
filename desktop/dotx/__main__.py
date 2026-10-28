@@ -277,7 +277,7 @@ class Browser(QMainWindow):
             self.progress.setVisible(progress < 100)
     def finished(self, view, ok):
         url = view.url().toString()
-        if not self.private and ok and view.url().scheme() in ('http', 'https'):
+        if not self.private and self.data['history_enabled'] and ok and valid_web_url(url):
             self.data['history'].append({'title': view.title() or url, 'url': url})
             self.data['history'] = self.data['history'][-1000:]
             self.save()
@@ -463,6 +463,12 @@ class Browser(QMainWindow):
         layout.addWidget(restore)
         info = QLabel('When enabled, page addresses (including query strings) are saved locally. Private-window tabs are never restored. Turning it off removes the saved list.')
         info.setWordWrap(True); layout.addWidget(info)
+        history_enabled = QCheckBox('Save browsing history on this device')
+        history_enabled.setChecked(self.data['history_enabled'])
+        history_enabled.setEnabled(not self.private)
+        layout.addWidget(history_enabled)
+        history_note = QLabel('Turning history off stops new DOTX history entries; it does not delete existing entries, recently closed tabs, or website data.')
+        history_note.setWordWrap(True); layout.addWidget(history_note)
         if self.private:
             warning = QLabel('Changes in this private window are temporary.'); warning.setWordWrap(True); layout.addWidget(warning)
         def clear_site_data():
@@ -481,6 +487,7 @@ class Browser(QMainWindow):
             self.data['appearance'] = appearance.currentText().lower()
             self.apply_theme()
             if not self.private:
+                self.data['history_enabled'] = history_enabled.isChecked()
                 self.data['restore_tabs'] = restore.isChecked()
                 if self.data['restore_tabs']: self.persist_session()
                 else:

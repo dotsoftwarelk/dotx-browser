@@ -15,13 +15,9 @@ def normalize_input(value: str, search: str = 'DuckDuckGo') -> str:
     if value == 'about:blank':
         return value
     if '://' in value:
-        try:
-            parsed = urlsplit(value)
-            # Never pass arbitrary OS handlers, credentials, malformed ports, or local files to the engine.
-            if valid_web_url(value):
-                return value
-        except ValueError:
-            pass
+        # Never pass arbitrary OS handlers, credentials, malformed ports, or local files to the engine.
+        if valid_web_url(value):
+            return value
         raise ValueError('Only valid HTTP and HTTPS addresses are supported.')
     host = value.split('/')[0].split(':')[0]
     is_host = host.lower() == 'localhost' or ('.' in host and ' ' not in value)
@@ -32,13 +28,9 @@ def normalize_input(value: str, search: str = 'DuckDuckGo') -> str:
         pass
     if is_host:
         candidate = 'https://' + value
-        try:
-            parsed = urlsplit(candidate)
-            _ = parsed.port
-            if parsed.hostname:
-                return candidate
-        except ValueError:
-            raise ValueError('Invalid address.')
+        if valid_web_url(candidate):
+            return candidate
+        raise ValueError('Invalid address.')
     return SEARCH.get(search, SEARCH['DuckDuckGo']) + quote_plus(value)
 
 def load_data(path: Path) -> dict:
@@ -51,7 +43,7 @@ def load_data(path: Path) -> dict:
     return {}
 
 def valid_web_url(url: object) -> bool:
-    if not isinstance(url, str) or not url or len(url) > 8192 or any(ord(ch) <= 32 or ord(ch) == 127 for ch in url):
+    if not isinstance(url, str) or not url or len(url) > 8192 or '\\' in url or any(ord(ch) <= 32 or ord(ch) == 127 for ch in url):
         return False
     try:
         parsed = urlsplit(url)
@@ -91,9 +83,10 @@ def validated_state(data: dict) -> dict:
     appearance = data.get('appearance')
     if appearance not in ('system', 'light', 'dark'): appearance = 'system'
     restore = data.get('restore_tabs') is True
+    history_enabled = data.get('history_enabled') if type(data.get('history_enabled')) is bool else True
     return {'bookmarks': records('bookmarks'), 'history': records('history'),
             'search': search if isinstance(search, str) and search in SEARCH else 'DuckDuckGo',
-            'appearance': appearance, 'restore_tabs': restore, 'session_urls': clean_session_urls(data.get('session_urls')) if restore else []}
+            'appearance': appearance, 'history_enabled': history_enabled, 'restore_tabs': restore, 'session_urls': clean_session_urls(data.get('session_urls')) if restore else []}
 
 def save_data(path: Path, data: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
