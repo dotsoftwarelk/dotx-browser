@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from PySide6.QtCore import QStandardPaths, Qt, QUrl, QTimer
+from PySide6.QtCore import QStandardPaths, Qt, QUrl, QTimer, QSize
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (QApplication, QComboBox, QFileDialog, QInputDialog, QLineEdit,
     QListWidget, QMainWindow, QMessageBox, QProgressBar, QTabWidget, QToolBar, QDialog,
@@ -10,7 +10,8 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from .services.github import search_url, search_issues_url, parse_results, parse_issues, error_message
 from .integrations.github_account import GitHubAccountDialog, GitHubSession
-from .theme import stylesheet
+from .theme import stylesheet, PALETTES, resolve_theme
+from .icons import action_icon
 from .core import normalize_input, load_data, save_data, validated_state, clean_session_urls, valid_web_url, SEARCH
 
 APP_NAME = 'DOTX Browser — development prototype'
@@ -61,6 +62,8 @@ class Browser(QMainWindow):
         self.tabs.setDocumentMode(True)
         self.tabs.setTabsClosable(True)
         self.tabs.setMovable(True)
+        self.tabs.tabBar().setElideMode(Qt.TextElideMode.ElideRight)
+        self.tabs.tabBar().setUsesScrollButtons(True)
         self.tabs.tabCloseRequested.connect(self.close_tab)
         self.tabs.currentChanged.connect(self.sync)
         self.tabs.tabBar().setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -70,24 +73,35 @@ class Browser(QMainWindow):
         bar = QToolBar('Navigation')
         bar.setMovable(False)
         self.addToolBar(bar)
-        self.action(bar, '←', self.back, 'Alt+Left', 'Back')
-        self.action(bar, '→', self.forward, 'Alt+Right', 'Forward')
-        self.action(bar, '↻', self.reload, 'Ctrl+R', 'Reload')
-        self.action(bar, '＋', self.new_tab, 'Ctrl+T', 'New tab')
+        bar.setIconSize(QSize(20, 20))
+        bar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        self.chrome_actions = {}
+        self.back_action = self.action(bar, 'Back', self.back, 'Alt+Left', 'Back', 'back')
+        self.forward_action = self.action(bar, 'Forward', self.forward, 'Alt+Right', 'Forward', 'forward')
+        self.action(bar, 'Reload', self.reload, 'Ctrl+R', 'Reload', 'reload')
+        self.action(bar, 'New tab', self.new_tab, 'Ctrl+T', 'New tab', 'new_tab')
         self.connection_label = QLabel('')
+        self.connection_label.setObjectName('connectionIndicator')
+        self.connection_label.setAccessibleName('Connection scheme')
         self.connection_label.setToolTip('Address scheme only. HTTPS is not a guarantee that a site is trustworthy; certificate checks are handled by WebEngine.')
         bar.addWidget(self.connection_label)
         self.address = QLineEdit()
         self.address.setPlaceholderText('Search or enter an address')
+        self.address.setAccessibleName('Search or enter an address')
+        self.address.setMinimumWidth(120)
         self.address.returnPressed.connect(self.navigate)
         bar.addWidget(self.address)
-        self.action(bar, '☆', self.bookmark, 'Ctrl+D', 'Bookmark this page')
-        self.action(bar, 'Bookmarks', self.bookmarks, None, 'Open bookmarks')
-        self.action(bar, 'History', self.history, 'Ctrl+H', 'Open history')
-        self.action(bar, 'Downloads', self.download_manager, 'Ctrl+J', 'Open downloads')
-        self.action(bar, 'Workspace', self.workspace, None, 'Open workspace')
-        self.action(bar, 'Settings', self.settings, None, 'Browser settings')
+        self.action(bar, 'Bookmark page', self.bookmark, 'Ctrl+D', 'Bookmark this page', 'bookmark')
+        self.action(bar, 'Bookmarks', self.bookmarks, None, 'Open bookmarks', 'bookmarks')
+        self.action(bar, 'History', self.history, 'Ctrl+H', 'Open history', 'history')
+        self.action(bar, 'Downloads', self.download_manager, 'Ctrl+J', 'Open downloads', 'downloads')
+        self.action(bar, 'Workspace', self.workspace, None, 'Open workspace', 'workspace')
+        self.action(bar, 'Settings', self.settings, None, 'Browser settings', 'settings')
         tools = self.menuBar().addMenu('Tools')
+        # Keep all management actions reachable from the menu when the toolbar overflows.
+        for name in ('bookmark', 'bookmarks', 'history', 'downloads', 'workspace', 'settings'):
+            tools.addAction(self.chrome_actions[name])
+        tools.addSeparator()
         self.menu_action(tools, 'New private window', self.open_private_window, 'Ctrl+Shift+N')
         self.menu_action(tools, 'Focus address bar', self.focus_address, 'Ctrl+L')
         self.menu_action(tools, 'Close tab', lambda: self.close_tab(self.tabs.currentIndex()), 'Ctrl+W')
@@ -102,6 +116,7 @@ class Browser(QMainWindow):
         self.menu_action(tools, 'Zoom out', lambda: self.zoom(-0.1), 'Ctrl+-')
         self.menu_action(tools, 'Reset zoom', self.reset_zoom, 'Ctrl+0')
         self.progress = QProgressBar()
+        self.progress.setAccessibleName('Page loading progress')
         self.progress.setMaximumWidth(100)
         self.progress.hide()
         self.statusBar().addPermanentWidget(self.progress)
@@ -115,13 +130,19 @@ class Browser(QMainWindow):
 
     def apply_theme(self, *args):
         self.setStyleSheet(stylesheet(self.data['appearance']))
+        palette = PALETTES[resolve_theme(self.data['appearance'])]
+        for name, action in self.chrome_actions.items():
+            action.setIcon(action_icon(name, palette['text'], palette['disabled']))
 
-    def action(self, toolbar, text, handler, shortcut, tooltip):
+    def action(self, toolbar, text, handler, shortcut, tooltip, icon):
         a = QAction(text, self)
         a.setToolTip(tooltip)
         if shortcut: a.setShortcut(QKeySequence(shortcut))
         a.triggered.connect(lambda checked=False: handler())
         toolbar.addAction(a)
+        self.chrome_actions[icon] = a
+        button = toolbar.widgetForAction(a)
+        button.setAccessibleName(tooltip)
         return a
 
     def menu_action(self, menu, label, handler, shortcut=None):
@@ -233,7 +254,11 @@ class Browser(QMainWindow):
         view.titleChanged.connect(lambda title, v=view: self.title_changed(v, title))
         view.iconChanged.connect(lambda icon, v=view: self.tabs.setTabIcon(self.tabs.indexOf(v), icon) if self.tabs.indexOf(v) >= 0 else None)
         view.urlChanged.connect(lambda u, v=view: self.url_changed(v, u))
+        view.setProperty('dotx_load_progress', 100)
+        view.loadStarted.connect(lambda v=view: self.loading(v, 0))
         view.loadProgress.connect(lambda p, v=view: self.loading(v, p))
+        for navigation in (QWebEnginePage.WebAction.Back, QWebEnginePage.WebAction.Forward):
+            view.page().action(navigation).changed.connect(lambda v=view: self.update_navigation() if v == self.view() else None)
         view.loadFinished.connect(lambda ok, v=view: self.finished(v, ok))
         view.setUrl(QUrl(url))
         return view
@@ -263,19 +288,34 @@ class Browser(QMainWindow):
         self.schedule_session_save()
     def title_changed(self, view, title):
         i = self.tabs.indexOf(view)
-        if i >= 0: self.tabs.setTabText(i, (title or 'New tab')[:35])
+        if i >= 0:
+            safe_title = (title or 'New tab')[:512]
+            self.tabs.setTabText(i, safe_title)
+            self.tabs.setTabToolTip(i, safe_title)
     def url_changed(self, view, url):
         if view == self.view():
             self.address.setText('' if url.toString() == 'about:blank' else url.toString())
             scheme = url.scheme().lower()
             self.connection_label.setText('HTTP' if scheme == 'http' else 'HTTPS' if scheme == 'https' else '')
-            self.connection_label.setStyleSheet('color:#ffb6a5' if scheme == 'http' else 'color:#b6c8db')
+            self.connection_label.setProperty('scheme', scheme)
+            self.connection_label.style().unpolish(self.connection_label)
+            self.connection_label.style().polish(self.connection_label)
+            self.update_navigation()
         self.schedule_session_save()
+    def update_navigation(self):
+        view = self.view()
+        if view is not None:
+            self.back_action.setEnabled(view.page().action(QWebEnginePage.WebAction.Back).isEnabled())
+            self.forward_action.setEnabled(view.page().action(QWebEnginePage.WebAction.Forward).isEnabled())
+
     def loading(self, view, progress):
+        view.setProperty('dotx_load_progress', progress)
         if view == self.view():
             self.progress.setValue(progress)
             self.progress.setVisible(progress < 100)
     def finished(self, view, ok):
+        self.loading(view, 100)
+        self.update_navigation()
         url = view.url().toString()
         if not self.private and self.data['history_enabled'] and ok and valid_web_url(url):
             self.data['history'].append({'title': view.title() or url, 'url': url})
@@ -283,7 +323,10 @@ class Browser(QMainWindow):
             self.save()
         if view == self.view(): self.statusBar().showMessage('Loaded' if ok else 'Page could not be loaded', 5000)
     def sync(self, index):
-        if self.view(): self.url_changed(self.view(), self.view().url())
+        if self.view():
+            self.url_changed(self.view(), self.view().url())
+            progress = self.view().property('dotx_load_progress')
+            self.loading(self.view(), progress if isinstance(progress, int) else 100)
     def navigate(self):
         try: self.view().setUrl(QUrl(normalize_input(self.address.text(), self.data['search'])))
         except ValueError as e: QMessageBox.warning(self, 'Invalid address', str(e))
@@ -308,6 +351,7 @@ class Browser(QMainWindow):
         layout = QVBoxLayout(dialog)
         search = QLineEdit(); search.setPlaceholderText('Filter by title or address'); layout.addWidget(search)
         listing = QListWidget(); layout.addWidget(listing)
+        empty = QLabel(); empty.setWordWrap(True); layout.addWidget(empty)
         def populate():
             listing.clear()
             for x in reversed(self.data[key]):
@@ -316,6 +360,9 @@ class Browser(QMainWindow):
                     item = QListWidgetItem(('[' + x.get('folder', 'Bookmarks') + '] ' if key == 'bookmarks' else '') + x.get('title', '') + '\n' + x.get('url', ''))
                     item.setData(Qt.ItemDataRole.UserRole, x)
                     listing.addItem(item)
+            noun = 'bookmarks' if key == 'bookmarks' else 'history entries'
+            empty.setText(('No matching ' + noun + '.') if self.data[key] else ('No ' + noun + ' yet.'))
+            empty.setVisible(listing.count() == 0)
         def open_item(item):
             self.new_tab(item.data(Qt.ItemDataRole.UserRole)['url']); dialog.accept()
         def edit_bookmark():
@@ -498,6 +545,7 @@ class Browser(QMainWindow):
         note = QLabel('Downloads remain on disk, including downloads from private windows. Open files from your chosen folder.')
         note.setWordWrap(True); layout.addWidget(note)
         listing = QListWidget(); layout.addWidget(listing)
+        empty = QLabel('No downloads in this window yet.'); layout.addWidget(empty)
         def refresh():
             selected = listing.currentRow()
             listing.clear()
@@ -514,6 +562,7 @@ class Browser(QMainWindow):
                 received, total = req.receivedBytes(), req.totalBytes()
                 progress = f'{received:,} / {total:,} bytes' if total > 0 else f'{received:,} bytes'
                 listing.addItem(f"{entry['path'].name} — {text} — {progress}\n{entry['path'].parent}")
+            empty.setVisible(not self.downloads)
             if 0 <= selected < listing.count(): listing.setCurrentRow(selected)
         def perform(action):
             row = listing.currentRow()

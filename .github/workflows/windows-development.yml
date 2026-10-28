@@ -7,6 +7,8 @@ on:
       - 'scripts/smoke_desktop.py'
       - 'scripts/smoke_download.py'
       - 'scripts/smoke_session.py'
+      - 'scripts/smoke_chrome.py'
+      - 'scripts/smoke_empty_states.py'
       - 'scripts/smoke_settings.py'
       - 'scripts/smoke_history_privacy.py'
       - 'scripts/smoke_bookmarks.py'
@@ -14,6 +16,8 @@ on:
       - 'packaging/**'
       - 'requirements*.txt'
       - '.github/workflows/windows-development.yml'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,6 +27,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -46,6 +52,10 @@ jobs:
           python scripts/smoke_download.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/smoke_session.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/smoke_chrome.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/smoke_empty_states.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/smoke_settings.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

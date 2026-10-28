@@ -2,6 +2,8 @@
 
 ## Unreleased — development prototype
 
+- Refined the browser chrome with original theme-aware icons, accessible toolbar labels, back/forward state, per-tab loading progress, clearer collection empty states and narrow-window menu access.
+
 - Added a local history-recording preference, stricter address validation, live public GitHub issue search, and light/dark/system themes to the website and browser chrome, a real Linux development-app screenshot, and live public build-metadata checking with safe unavailable states.
 
 - Added experimental session-only GitHub device authorization with public-client configuration and mocked tests; no live account verification.
@@ -12,4 +14,4 @@
 - Introduced a small PySide6/Qt WebEngine browser prototype and a static multipage website.
 - Added unit and headless local smoke checks, and GitHub Pages automation.
 - Added workspace website shortcuts; authenticated provider integrations are not implemented.
-- An unsigned development installer was built and smoke-tested on Windows CI. There is no stable software release, integrated backend or OAuth connection. The static website was deployed via GitHub Pages.
+- An unsigned development installer was built and smoke-tested on Windows CI. There is no stable software release, integrated backend or real-account-verified OAuth connection. The static website was deployed via GitHub Pages.

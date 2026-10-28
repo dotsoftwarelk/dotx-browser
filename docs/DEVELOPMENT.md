@@ -4,7 +4,7 @@ Install a supported Python version and `requirements.txt`. Qt WebEngine has subs
 
 The headless smoke test requires PySide6, Qt native system libraries, and a working WebEngine environment. A restricted Linux container may need `QT_QPA_PLATFORM=offscreen QTWEBENGINE_DISABLE_SANDBOX=1 QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu PYTHONPATH=desktop python scripts/smoke_desktop.py`. Disabling Chromium sandbox protections is **only** for isolated CI testing, not regular use or release builds.
 
-Dependencies are constrained but not lockfile-pinned. Establish a tested lock strategy and security update process before release.
+Direct runtime and build dependencies are version-pinned, but transitive dependencies and system inputs are not fully locked. Establish a tested lock strategy and security update process before release.
 
 ## Optional browser-based website QA
 
